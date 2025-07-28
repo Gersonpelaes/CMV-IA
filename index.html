@@ -1882,6 +1882,17 @@
         let db, auth, userId;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
+        // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
+        const firebaseConfig = {{
+  apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
+  authDomain: "cmv-ia.firebaseapp.com",
+  projectId: "cmv-ia",
+  storageBucket: "cmv-ia.firebasestorage.app",
+  messagingSenderId: "587984899697",
+  appId: "1:587984899697:web:d268195678b0e81cb515d0",
+  measurementId: "G-V0R45F3XS5"
+};
+        
         function getCollectionPath(collectionName) {
             return `/artifacts/${appId}/users/${userId}/${collectionName}`;
         }
@@ -1942,7 +1953,7 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                // Use a configuração definida acima
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -1958,15 +1969,12 @@
                     }
                 });
 
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Para ambientes de produção, a autenticação anónima é a mais simples
+                await signInAnonymously(auth);
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                document.body.innerHTML = '<div class="text-center p-8 text-red-500">Falha ao conectar com a base de dados. Verifique a configuração.</div>';
+                document.body.innerHTML = '<div class="text-center p-8 text-red-500">Falha ao conectar com a base de dados. Verifique a sua configuração do Firebase no ficheiro HTML.</div>';
             }
         });
     </script>
