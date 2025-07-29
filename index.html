@@ -136,7 +136,7 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div class="relative min-h-screen md:flex">
+    <div id="app-container" class="relative min-h-screen md:flex">
         <!-- Overlay para menu mobile -->
         <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
 
@@ -557,8 +557,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- LÓGICA DE NAVEGAÇÃO E TEMA ---
         const sidebar = document.getElementById('sidebar');
@@ -1880,10 +1880,10 @@
 
         // --- FIREBASE SETUP ---
         let db, auth, userId;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const appId = 'cmv-ia-app'; // Um ID fixo para a aplicação
 
         // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
-        const firebaseConfig = {{
+        const firebaseConfig = {
   apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
   authDomain: "cmv-ia.firebaseapp.com",
   projectId: "cmv-ia",
@@ -1894,7 +1894,8 @@
 };
         
         function getCollectionPath(collectionName) {
-            return `/artifacts/${appId}/users/${userId}/${collectionName}`;
+            // Usando um caminho público para dados partilhados, ou privado se tiver userId
+            return userId ? `/artifacts/${appId}/users/${userId}/${collectionName}` : `/artifacts/${appId}/public/data/${collectionName}`;
         }
 
         async function saveCategories() {
@@ -1918,7 +1919,6 @@
                     baseRecipeCategories = data.baseRecipeCategories || [];
                     directSaleCategories = data.directSaleCategories || [];
                 } else {
-                    // Se não existir, cria com dados de teste
                     ingredientCategories = ['CARNES', 'LATICÍNIOS', 'HORTIFRUTI', 'MERCEARIA', 'PEIXES'];
                     dishCategories = ['PRATO PRINCIPAL', 'MASSAS', 'PEIXES', 'EXECUTIVO', 'LANCHES', 'SALADAS', 'SOPAS', 'GRELHADOS', 'ACOMPANHAMENTOS'];
                     baseRecipeCategories = ['MOLHOS', 'ACOMPANHAMENTOS', 'CONSERVAS', 'TEMPEROS'];
@@ -1943,7 +1943,6 @@
             // Listener para Receitas/Fichas
             onSnapshot(query(collection(db, getCollectionPath('recipes'))), (snapshot) => {
                 receitasSalvas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Re-renderiza a view atual se ela depender desses dados
                 const activeView = document.querySelector('.view.active').id.replace('-view', '');
                 if (['consultar', 'precos', 'margem'].includes(activeView)) {
                     showView(activeView);
@@ -1952,8 +1951,19 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
+            if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
+                document.getElementById('app-container').innerHTML = `
+                    <div class="w-full h-screen flex items-center justify-center p-8">
+                        <div class="text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                            <strong class="font-bold">Erro de Configuração!</strong>
+                            <span class="block sm:inline">A configuração do Firebase não foi encontrada. Por favor, edite o ficheiro HTML e substitua o objeto 'firebaseConfig' pelas suas credenciais do Firebase.</span>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             try {
-                // Use a configuração definida acima
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -1969,12 +1979,11 @@
                     }
                 });
 
-                // Para ambientes de produção, a autenticação anónima é a mais simples
                 await signInAnonymously(auth);
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                document.body.innerHTML = '<div class="text-center p-8 text-red-500">Falha ao conectar com a base de dados. Verifique a sua configuração do Firebase no ficheiro HTML.</div>';
+                document.getElementById('app-container').innerHTML = `<div class="text-center p-8 text-red-500">Falha ao conectar com a base de dados: ${error.message}</div>`;
             }
         });
     </script>
