@@ -596,8 +596,27 @@
 
             // Função para buscar a configuração do Firebase de forma segura
             async function getFirebaseConfig() {
+                // Se não estiver em produção (Netlify), usa a configuração local.
+                if (window.location.hostname !== 'localhost' && !window.location.hostname.endsWith('.netlify.app')) {
+                    console.log("Running in local/dev mode. Using local Firebase config.");
+                    // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE PARA TESTES LOCAIS
+                    // Este objeto é usado APENAS para desenvolvimento local.
+                    // Em produção, as chaves virão das variáveis de ambiente do Netlify.
+                    const localFirebaseConfig = {
+                        apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
+                        authDomain: "cmv-ia.firebaseapp.com",
+                        projectId: "cmv-ia",
+                        storageBucket: "cmv-ia.firebasestorage.app",
+                        messagingSenderId: "587984899697",
+                        appId: "1:587984899697:web:d268195678b0e81cb515d0",
+                        measurementId: "G-V0R45F3XS5"
+                    };
+                    return localFirebaseConfig;
+                }
+
+                // Em produção (Netlify), busca a configuração da função serverless.
                 try {
-                    // O caminho /.netlify/functions/ é o endpoint padrão para funções Netlify
+                    console.log("Running in production mode. Fetching Firebase config from Netlify function.");
                     const response = await fetch('/.netlify/functions/firebase-config');
                     if (!response.ok) {
                         throw new Error(`Network response was not ok, status: ${response.status}`);
@@ -616,7 +635,7 @@
                     <div class="w-full h-screen flex items-center justify-center p-8 bg-gray-100">
                         <div class="text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                             <strong class="font-bold">Erro de Configuração!</strong>
-                            <span class="block sm:inline">Não foi possível carregar a configuração do Firebase. Verifique as variáveis de ambiente no Netlify e se o ficheiro 'netlify.toml' está correto.</span>
+                            <span class="block sm:inline">Não foi possível carregar a configuração do Firebase. Verifique as variáveis de ambiente no Netlify e se o ficheiro 'netlify.toml' está correto. Se estiver a executar localmente, verifique o objeto 'localFirebaseConfig' no ficheiro HTML.</span>
                         </div>
                     </div>
                 `;
