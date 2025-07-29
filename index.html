@@ -1711,9 +1711,15 @@
                     rendimento: parseFloat(form['rendimento-ingrediente'].value), 
                     custoBase: precoCompra / unidadeCompraQtd
                 };
-                await addDoc(collection(db, getCollectionPath('ingredients')), newIngredient);
-                form.reset();
-                form['rendimento-ingrediente'].value = '100';
+                try {
+                    await addDoc(collection(db, getCollectionPath('ingredients')), newIngredient);
+                    alert('Ingrediente salvo com sucesso!');
+                    form.reset();
+                    form['rendimento-ingrediente'].value = '100';
+                } catch (error) {
+                    console.error("Erro ao salvar ingrediente:", error);
+                    alert(`Falha ao salvar ingrediente: ${error.message}`);
+                }
             });
 
             formProdutoVenda.addEventListener('submit', async (e) => {
@@ -1726,8 +1732,14 @@
                     precoVenda: parseFloat(form['preco-venda-venda'].value),
                     taxaPerda: parseFloat(form['taxa-perda-venda'].value) || 0
                 };
-                await addDoc(collection(db, getCollectionPath('direct_sale_products')), newProduct);
-                form.reset();
+                 try {
+                    await addDoc(collection(db, getCollectionPath('direct_sale_products')), newProduct);
+                    alert('Produto salvo com sucesso!');
+                    form.reset();
+                } catch (error) {
+                    console.error("Erro ao salvar produto:", error);
+                    alert(`Falha ao salvar produto: ${error.message}`);
+                }
             });
 
             selectItem.addEventListener('change', (e) => {
