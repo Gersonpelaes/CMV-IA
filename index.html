@@ -9,6 +9,10 @@
     <!-- Bibliotecas para gerar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Link para o Manifest do PWA -->
+    <link rel="manifest" href="manifest.json">
+    
     <style>
         :root {
             --bg-primary: #f3f4f6;
@@ -2155,6 +2159,19 @@
                 document.body.innerHTML = `<div class="text-center p-8 text-red-500">Falha ao conectar com a base de dados: ${error.message}</div>`;
             }
         });
+    </script>
+    
+    <!-- Script para registrar o Service Worker do PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('ServiceWorker registrado com sucesso: ', registration.scope);
+          }, err => {
+            console.log('Falha ao registrar o ServiceWorker: ', err);
+          });
+        });
+      }
     </script>
 
 </body>
