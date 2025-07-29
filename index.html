@@ -610,21 +610,6 @@
             measurementId: "G-V0R45F3XS5"
         };
         
-        function getCollectionPath(collectionName) {
-            return `/restaurants/${restaurantId}/${collectionName}`;
-        }
-
-        async function saveCategories() {
-            if (!restaurantId) return;
-            const categoriesData = {
-                ingredientCategories,
-                dishCategories,
-                baseRecipeCategories,
-                directSaleCategories
-            };
-            await setDoc(doc(db, getCollectionPath('categories'), 'main'), categoriesData);
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
             if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
                 document.body.innerHTML = `
@@ -637,79 +622,6 @@
                 `;
                 return;
             }
-            
-            // --- LÓGICA DE NAVEGAÇÃO E TEMA ---
-            const appContainer = document.getElementById('app-container');
-            const authView = document.getElementById('auth-view');
-            const sidebar = document.getElementById('sidebar');
-            const hamburgerBtn = document.getElementById('hamburger-btn');
-            const sidebarOverlay = document.getElementById('sidebar-overlay');
-            const views = document.querySelectorAll('.view');
-            const navItems = document.querySelectorAll('[data-view]');
-            const headerSubtitle = document.getElementById('header-subtitle');
-            const themeToggle = document.getElementById('theme-toggle');
-            const micToggle = document.getElementById('mic-toggle');
-            const subtitleMap = {
-                dashboard: 'Dashboard',
-                settings: 'Configurações',
-                ingredientes: 'Banco de Ingredientes',
-                'venda-direta': 'Produtos de Venda Direta',
-                fichas: 'Ficha Técnica Gerencial',
-                consultar: 'Consultar Fichas Salvas',
-                analise: 'Análise de Custos',
-                margem: 'Relatório de Margem',
-                precos: 'Lista de Preços de Venda',
-                vendas: 'Análise de Vendas e CMV'
-            };
-            
-            function toggleSidebar() {
-                sidebar.classList.toggle('-translate-x-full');
-                sidebarOverlay.classList.toggle('hidden');
-            }
-
-            hamburgerBtn.addEventListener('click', toggleSidebar);
-            sidebarOverlay.addEventListener('click', toggleSidebar);
-            
-            function showView(viewId) {
-                views.forEach(view => view.classList.remove('active'));
-                const activeView = document.getElementById(viewId + '-view');
-                if (activeView) {
-                    activeView.classList.add('active');
-                    headerSubtitle.textContent = subtitleMap[viewId] || 'Dashboard';
-                    
-                    navItems.forEach(nav => {
-                        if (nav.dataset.view === viewId) {
-                            nav.classList.add('bg-blue-50', 'text-blue-600', 'font-semibold');
-                        } else {
-                            nav.classList.remove('bg-blue-50', 'text-blue-600', 'font-semibold');
-                        }
-                    });
-
-                    if (window.innerWidth < 768) { // md breakpoint
-                        if(!sidebar.classList.contains('-translate-x-full')) {
-                        toggleSidebar();
-                        }
-                    }
-
-                    if (viewId === 'consultar') renderizarFichasParaConsulta();
-                    if (viewId === 'analise') renderizarAnaliseDeCustos();
-                    if (viewId === 'margem') renderizarRelatorioMargem();
-                    if (viewId === 'precos') renderizarListaDePrecos();
-                    if (viewId === 'ingredientes') populateIngredientCategoryDropdowns();
-                    if (viewId === 'venda-direta') populateDirectSaleCategoryDropdown();
-                    if (viewId === 'fichas') populateDishCategoryDropdown();
-                }
-            }
-            
-            navItems.forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const viewName = item.dataset.view;
-                    if(viewName === 'fichas') limparFicha();
-                    showView(viewName);
-                });
-            });
-            document.querySelector('button[data-view="settings"]').addEventListener('click', () => showView('settings'));
 
             // --- BANCO DE DADOS E LÓGICA PRINCIPAL ---
             let ingredientes = [];
@@ -721,8 +633,18 @@
             let dishCategories = [];
             let baseRecipeCategories = [];
             let directSaleCategories = [];
-
+            
             // --- SELETORES DE ELEMENTOS ---
+            const appContainer = document.getElementById('app-container');
+            const authView = document.getElementById('auth-view');
+            const sidebar = document.getElementById('sidebar');
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const views = document.querySelectorAll('.view');
+            const navItems = document.querySelectorAll('[data-view]');
+            const headerSubtitle = document.getElementById('header-subtitle');
+            const themeToggle = document.getElementById('theme-toggle');
+            const micToggle = document.getElementById('mic-toggle');
             const formIngrediente = document.getElementById('form-ingrediente');
             const listaIngredientesDiv = document.getElementById('lista-ingredientes');
             const formFichaHeader = document.getElementById('form-ficha-header');
@@ -766,7 +688,6 @@
             const desempenhoCmvContainer = document.getElementById('desempenho-cmv-container');
             const engenhariaCardapioContainer = document.getElementById('engenharia-cardapio-container');
             const curvaAbcContainer = document.getElementById('curva-abc-container');
-            // Novos seletores para categorias
             const formCatIngrediente = document.getElementById('form-cat-ingrediente');
             const formCatPrato = document.getElementById('form-cat-prato');
             const formCatBase = document.getElementById('form-cat-base');
@@ -779,11 +700,134 @@
             const categoriaProdutoSelect = document.getElementById('categoria-produto');
             const searchIngredienteInput = document.getElementById('search-ingrediente');
             const filterIngredienteCategoriaSelect = document.getElementById('filter-ingrediente-categoria');
-            // Novos seletores para Venda Direta
             const formProdutoVenda = document.getElementById('form-produto-venda');
             const listaProdutosVendaDiv = document.getElementById('lista-produtos-venda');
             const categoriaProdutoVendaSelect = document.getElementById('categoria-produto-venda');
 
+            // --- FUNÇÕES DE SETUP DO FIREBASE (MOVENDO PARA DENTRO DO DOMCONTENTLOADED) ---
+            function getCollectionPath(collectionName) {
+                if (!restaurantId) return null;
+                return `/restaurants/${restaurantId}/${collectionName}`;
+            }
+
+            async function saveCategories() {
+                const path = getCollectionPath('categories');
+                if (!path) return;
+                const categoriesData = {
+                    ingredientCategories,
+                    dishCategories,
+                    baseRecipeCategories,
+                    directSaleCategories
+                };
+                await setDoc(doc(db, path, 'main'), categoriesData);
+            }
+
+            function setupRealtimeListeners() {
+                if (!restaurantId) return;
+
+                // Listener para Categorias
+                onSnapshot(doc(db, getCollectionPath('categories'), 'main'), (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        ingredientCategories = data.ingredientCategories || [];
+                        dishCategories = data.dishCategories || [];
+                        baseRecipeCategories = data.baseRecipeCategories || [];
+                        directSaleCategories = data.directSaleCategories || [];
+                    }
+                    renderAllCategoryLists();
+                });
+
+                // Listener para Ingredientes
+                onSnapshot(query(collection(db, getCollectionPath('ingredients'))), (snapshot) => {
+                    ingredientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderizarIngredientes(searchIngredienteInput.value, filterIngredienteCategoriaSelect.value);
+                });
+
+                // Listener para Produtos de Venda Direta
+                onSnapshot(query(collection(db, getCollectionPath('direct_sale_products'))), (snapshot) => {
+                    produtosVendaDireta = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderizarProdutosVendaDireta();
+                });
+
+                // Listener para Receitas/Fichas
+                onSnapshot(query(collection(db, getCollectionPath('recipes'))), (snapshot) => {
+                    receitasSalvas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const activeViewEl = document.querySelector('.view.active');
+                    if (activeViewEl) {
+                        const activeView = activeViewEl.id.replace('-view', '');
+                        if (['consultar', 'precos', 'margem', 'analise'].includes(activeView)) {
+                            showView(activeView);
+                        }
+                    }
+                });
+            }
+            
+            // --- LÓGICA DE NAVEGAÇÃO E TEMA ---
+            const subtitleMap = {
+                dashboard: 'Dashboard',
+                settings: 'Configurações',
+                ingredientes: 'Banco de Ingredientes',
+                'venda-direta': 'Produtos de Venda Direta',
+                fichas: 'Ficha Técnica Gerencial',
+                consultar: 'Consultar Fichas Salvas',
+                analise: 'Análise de Custos',
+                margem: 'Relatório de Margem',
+                precos: 'Lista de Preços de Venda',
+                vendas: 'Análise de Vendas e CMV'
+            };
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            }
+
+            hamburgerBtn.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+            
+            function showView(viewId) {
+                views.forEach(view => view.classList.remove('active'));
+                const activeView = document.getElementById(viewId + '-view');
+                if (activeView) {
+                    activeView.classList.add('active');
+                    headerSubtitle.textContent = subtitleMap[viewId] || 'Dashboard';
+                    
+                    navItems.forEach(nav => {
+                        if (nav.dataset.view === viewId) {
+                            nav.classList.add('bg-blue-50', 'text-blue-600', 'font-semibold');
+                        } else {
+                            nav.classList.remove('bg-blue-50', 'text-blue-600', 'font-semibold');
+                        }
+                    });
+
+                    if (window.innerWidth < 768) { // md breakpoint
+                        if(!sidebar.classList.contains('-translate-x-full')) {
+                        toggleSidebar();
+                        }
+                    }
+
+                    // Refresh data on view change
+                    if (viewId === 'consultar') renderizarFichasParaConsulta();
+                    if (viewId === 'analise') renderizarAnaliseDeCustos();
+                    if (viewId === 'margem') renderizarRelatorioMargem();
+                    if (viewId === 'precos') renderizarListaDePrecos();
+                    if (viewId === 'ingredientes') populateIngredientCategoryDropdowns();
+                    if (viewId === 'venda-direta') populateDirectSaleCategoryDropdown();
+                    if (viewId === 'fichas') {
+                        populateDishCategoryDropdown();
+                        popularDropdownItens();
+                    }
+                }
+            }
+            
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const viewName = item.dataset.view;
+                    if(viewName === 'fichas') limparFicha();
+                    showView(viewName);
+                });
+            });
+            document.querySelector('button[data-view="settings"]').addEventListener('click', () => showView('settings'));
 
             // --- FUNÇÕES DE CATEGORIA ---
             function renderCategoryList(list, container, colorClass, type) {
@@ -798,11 +842,11 @@
                     li.innerHTML = `
                         <span>${cat}</span>
                         <div class="flex gap-2">
-                            <button class="btn-edit-cat" data-name="${cat}" data-type="${type}">
-                                <svg class="w-4 h-4 hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z"></path></svg>
+                            <button class="btn-edit-cat" data-name="${cat}" data-type="${type}" title="Editar">
+                                <svg class="w-4 h-4 hover:text-blue-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z"></path></svg>
                             </button>
-                            <button class="btn-delete-cat" data-name="${cat}" data-type="${type}">
-                                <svg class="w-4 h-4 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <button class="btn-delete-cat" data-name="${cat}" data-type="${type}" title="Excluir">
+                                <svg class="w-4 h-4 hover:text-red-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         </div>
                     `;
@@ -815,10 +859,19 @@
                 renderCategoryList(directSaleCategories, listaCatVenda, 'orange', 'directSale');
                 renderCategoryList(dishCategories, listaCatPratos, 'green', 'dish');
                 renderCategoryList(baseRecipeCategories, listaCatBases, 'purple', 'base');
+                populateIngredientCategoryDropdowns();
+                populateDirectSaleCategoryDropdown();
+                populateDishCategoryDropdown();
             }
 
             async function addCategory(event, categoryArray, inputId) {
                 event.preventDefault();
+                const form = event.target;
+                const button = form.querySelector('button[type="submit"]');
+                const originalText = button.textContent;
+                button.textContent = '...';
+                button.disabled = true;
+
                 const input = document.getElementById(inputId);
                 const categoryName = input.value.trim().toUpperCase();
                 if (categoryName && !categoryArray.includes(categoryName)) {
@@ -827,6 +880,11 @@
                     await saveCategories();
                 }
                 input.value = '';
+                button.textContent = 'OK!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }, 1000);
             }
 
             async function deleteCategory(name, type) {
@@ -846,22 +904,24 @@
             async function editCategory(oldName, type) {
                 let categoryArray;
                 let itemsToUpdate = [];
-                let categoryField = 'category';
-
+                let collectionName;
+                
                 if (type === 'ingredient') {
                     categoryArray = ingredientCategories;
-                    itemsToUpdate = ingredientes;
+                    itemsToUpdate = ingredientes.filter(i => i.category === oldName);
+                    collectionName = 'ingredients';
                 } else if (type === 'dish') {
                     categoryArray = dishCategories;
-                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'prato');
-                    categoryField = 'header.categoria';
+                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'prato' && r.header.categoria === oldName);
+                    collectionName = 'recipes';
                 } else if (type === 'base') {
                     categoryArray = baseRecipeCategories;
-                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'base');
-                    categoryField = 'header.categoria';
+                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'base' && r.header.categoria === oldName);
+                    collectionName = 'recipes';
                 } else if (type === 'directSale') {
                     categoryArray = directSaleCategories;
-                    itemsToUpdate = produtosVendaDireta;
+                    itemsToUpdate = produtosVendaDireta.filter(p => p.category === oldName);
+                    collectionName = 'direct_sale_products';
                 }
 
                 const newName = prompt(`Editar categoria "${oldName}":`, oldName)?.trim().toUpperCase();
@@ -872,21 +932,12 @@
                         categoryArray[index] = newName;
                         categoryArray.sort();
 
-                        // Update items using this category
                         const updatePromises = itemsToUpdate.map(item => {
-                            if (type === 'ingredient' && item.category === oldName) {
-                                item.category = newName;
-                                return setDoc(doc(db, getCollectionPath('ingredients'), item.id), item);
-                            } else if (type === 'directSale' && item.category === oldName) {
-                                item.category = newName;
-                                return setDoc(doc(db, getCollectionPath('direct_sale_products'), item.id), item);
-                            } else if ((type === 'dish' || type === 'base') && item.header.categoria === oldName) {
-                                item.header.categoria = newName;
-                                return setDoc(doc(db, getCollectionPath('recipes'), item.id), item);
-                            }
-                            return Promise.resolve();
+                            const itemRef = doc(db, getCollectionPath(collectionName), item.id);
+                            const fieldToUpdate = (type === 'dish' || type === 'base') ? 'header.categoria' : 'category';
+                            return updateDoc(itemRef, { [fieldToUpdate]: newName });
                         });
-
+                        
                         await Promise.all(updatePromises);
                         await saveCategories();
                     }
@@ -894,7 +945,6 @@
                     alert("Essa categoria já existe.");
                 }
             }
-
 
             function populateIngredientCategoryDropdowns() {
                 const selects = [categoriaIngredienteSelect, filterIngredienteCategoriaSelect];
@@ -909,23 +959,33 @@
                     ingredientCategories.forEach(cat => {
                         select.innerHTML += `<option value="${cat}">${cat}</option>`;
                     });
-                    select.value = currentValue;
+                    if (ingredientCategories.includes(currentValue)) {
+                        select.value = currentValue;
+                    }
                 });
             }
 
             function populateDirectSaleCategoryDropdown() {
+                const currentValue = categoriaProdutoVendaSelect.value;
                 categoriaProdutoVendaSelect.innerHTML = '<option value="">SELECIONE...</option>';
                 directSaleCategories.forEach(cat => {
                     categoriaProdutoVendaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
+                if (directSaleCategories.includes(currentValue)) {
+                    categoriaProdutoVendaSelect.value = currentValue;
+                }
             }
 
             function populateDishCategoryDropdown() {
+                const currentValue = categoriaProdutoSelect.value;
                 categoriaProdutoSelect.innerHTML = '<option value="">SELECIONE...</option>';
+                let valueExists = false;
+
                 const pratosOptgroup = document.createElement('optgroup');
                 pratosOptgroup.label = '--- PRATOS FINAIS ---';
                 dishCategories.forEach(cat => {
                     pratosOptgroup.innerHTML += `<option value="${cat}">${cat}</option>`;
+                    if (cat === currentValue) valueExists = true;
                 });
                 categoriaProdutoSelect.appendChild(pratosOptgroup);
 
@@ -933,8 +993,13 @@
                 basesOptgroup.label = '--- RECEITAS BASE ---';
                 baseRecipeCategories.forEach(cat => {
                     basesOptgroup.innerHTML += `<option value="${cat}">${cat}</option>`;
+                     if (cat === currentValue) valueExists = true;
                 });
                 categoriaProdutoSelect.appendChild(basesOptgroup);
+
+                if (valueExists) {
+                    categoriaProdutoSelect.value = currentValue;
+                }
             }
 
             // --- FUNÇÕES DE RENDERIZAÇÃO ---
@@ -1256,7 +1321,7 @@
                     `;
 
                     pratosDaCategoria.forEach(prato => {
-                        const custoPorPorcao = (prato.custoTotal / prato.header.rendimentoReceitaKg) * (prato.header.tamanhoPorcaoG / 1000) || 0;
+                        const custoPorcao = (prato.custoTotal / prato.header.rendimentoReceitaKg) * (prato.header.tamanhoPorcaoG / 1000) || 0;
                         const precoVenda = prato.header.precoVenda || 0;
                         const margemAtual = precoVenda > 0 ? ((precoVenda - custoPorcao) / precoVenda) * 100 : 0;
 
@@ -2094,4 +2159,3 @@
 
 </body>
 </html>
-
