@@ -605,8 +605,9 @@
             };
 
             if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
-                document.body.innerHTML = `
-                    <div class="w-full h-screen flex items-center justify-center p-8 bg-gray-100">
+                document.getElementById('app-container').style.display = 'none';
+                document.getElementById('auth-view').innerHTML = `
+                    <div class="w-full max-w-lg mx-auto">
                         <div class="text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                             <strong class="font-bold">Erro de Configuração!</strong>
                             <span class="block sm:inline">A configuração do Firebase não foi encontrada. Por favor, edite o ficheiro HTML e substitua o objeto 'firebaseConfig' pelas suas credenciais do Firebase.</span>
