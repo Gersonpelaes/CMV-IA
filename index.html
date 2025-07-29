@@ -134,9 +134,38 @@
 
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-primary text-primary">
 
-    <div id="app-container" class="relative min-h-screen md:flex">
+    <!-- Auth View -->
+    <div id="auth-view" class="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div class="w-full max-w-md">
+            <div class="card p-8">
+                <div class="text-center mb-8">
+                    <svg class="w-20 h-20 mx-auto text-blue-600" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.5 3.75a3 3 0 00-3 3v.75h21v-.75a3 3 0 00-3-3h-15z" clip-rule="evenodd"/><path d="M22.5 9.75h-21v7.5a3 3 0 003 3h15a3 3 0 003-3v-7.5zm-18.75 3.75a.75.75 0 01.75-.75h6a.75.75 0 010 1.5h-6a.75.75 0 01-.75-.75zm.75 2.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/></svg>
+                    <h1 class="text-3xl font-bold text-primary mt-2">Cmv.ia</h1>
+                </div>
+                <!-- Login Form -->
+                <form id="login-form" class="space-y-6">
+                    <div><label for="login-email" class="block text-sm font-medium text-secondary">Email</label><input type="email" id="login-email" required class="mt-1 form-input"></div>
+                    <div><label for="login-password" class="block text-sm font-medium text-secondary">Palavra-passe</label><input type="password" id="login-password" required class="mt-1 form-input"></div>
+                    <p id="login-error" class="text-red-500 text-sm hidden"></p>
+                    <div><button type="submit" class="w-full btn-primary">Entrar</button></div>
+                    <p class="text-center text-sm text-secondary">Não tem uma conta? <a href="#" id="show-register" class="font-medium text-blue-600 hover:text-blue-500">Registe-se</a></p>
+                </form>
+                <!-- Register Form -->
+                <form id="register-form" class="space-y-6 hidden">
+                     <div><label for="register-restaurant" class="block text-sm font-medium text-secondary">Nome do Restaurante</label><input type="text" id="register-restaurant" required class="mt-1 form-input"></div>
+                    <div><label for="register-email" class="block text-sm font-medium text-secondary">Email</label><input type="email" id="register-email" required class="mt-1 form-input"></div>
+                    <div><label for="register-password" class="block text-sm font-medium text-secondary">Palavra-passe</label><input type="password" id="register-password" required class="mt-1 form-input"></div>
+                     <p id="register-error" class="text-red-500 text-sm hidden"></p>
+                    <div><button type="submit" class="w-full btn-primary">Criar Conta</button></div>
+                    <p class="text-center text-sm text-secondary">Já tem uma conta? <a href="#" id="show-login" class="font-medium text-blue-600 hover:text-blue-500">Faça login</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="relative min-h-screen md:flex hidden">
         <!-- Overlay para menu mobile -->
         <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
 
@@ -205,8 +234,10 @@
                         <button data-view="settings" class="text-secondary hover:text-blue-600" title="Configurações">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </button>
-                        <span class="hidden sm:block text-secondary">Olá, Gestor!</span>
-                        <img src="https://placehold.co/40x40/e0e7ff/4338ca?text=G" alt="Avatar" class="rounded-full">
+                        <span id="user-email" class="hidden sm:block text-secondary"></span>
+                        <button id="logout-btn" class="text-secondary hover:text-red-500" title="Sair">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        </button>
                     </div>
                 </header>
 
@@ -557,10 +588,12 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- LÓGICA DE NAVEGAÇÃO E TEMA ---
+        const appContainer = document.getElementById('app-container');
+        const authView = document.getElementById('auth-view');
         const sidebar = document.getElementById('sidebar');
         const hamburgerBtn = document.getElementById('hamburger-btn');
         const sidebarOverlay = document.getElementById('sidebar-overlay');
@@ -1879,27 +1912,24 @@
         });
 
         // --- FIREBASE SETUP ---
-        let db, auth, userId;
-        const appId = 'cmv-ia-app'; // Um ID fixo para a aplicação
+        let db, auth, restaurantId;
 
         // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
         const firebaseConfig = {
-  apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
-  authDomain: "cmv-ia.firebaseapp.com",
-  projectId: "cmv-ia",
-  storageBucket: "cmv-ia.firebasestorage.app",
-  messagingSenderId: "587984899697",
-  appId: "1:587984899697:web:d268195678b0e81cb515d0",
-  measurementId: "G-V0R45F3XS5"
-};
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
         
         function getCollectionPath(collectionName) {
-            // Usando um caminho público para dados partilhados, ou privado se tiver userId
-            return userId ? `/artifacts/${appId}/users/${userId}/${collectionName}` : `/artifacts/${appId}/public/data/${collectionName}`;
+            return `/restaurants/${restaurantId}/${collectionName}`;
         }
 
         async function saveCategories() {
-            if (!userId) return;
+            if (!restaurantId) return;
             const categoriesData = {
                 ingredientCategories,
                 dishCategories,
@@ -1918,12 +1948,6 @@
                     dishCategories = data.dishCategories || [];
                     baseRecipeCategories = data.baseRecipeCategories || [];
                     directSaleCategories = data.directSaleCategories || [];
-                } else {
-                    ingredientCategories = ['CARNES', 'LATICÍNIOS', 'HORTIFRUTI', 'MERCEARIA', 'PEIXES'];
-                    dishCategories = ['PRATO PRINCIPAL', 'MASSAS', 'PEIXES', 'EXECUTIVO', 'LANCHES', 'SALADAS', 'SOPAS', 'GRELHADOS', 'ACOMPANHAMENTOS'];
-                    baseRecipeCategories = ['MOLHOS', 'ACOMPANHAMENTOS', 'CONSERVAS', 'TEMPEROS'];
-                    directSaleCategories = ['REFRIGERANTES', 'CERVEJAS', 'SOBREMESAS'];
-                    saveCategories();
                 }
                 renderAllCategoryLists();
             });
@@ -1970,22 +1994,96 @@
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        userId = user.uid;
-                        console.log("User signed in with UID:", userId);
+                        restaurantId = user.uid; // Usamos o UID do user como ID do restaurante
+                        console.log("User signed in with UID:", restaurantId);
+                        document.getElementById('user-email').textContent = user.email;
+                        authView.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
                         setupRealtimeListeners(); 
                         showView('dashboard');
                     } else {
+                        restaurantId = null;
                         console.log("No user signed in.");
+                        authView.classList.remove('hidden');
+                        appContainer.classList.add('hidden');
                     }
                 });
-
-                await signInAnonymously(auth);
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
                 document.getElementById('app-container').innerHTML = `<div class="text-center p-8 text-red-500">Falha ao conectar com a base de dados: ${error.message}</div>`;
             }
         });
+
+        // --- LÓGICA DE AUTENTICAÇÃO ---
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const showRegisterBtn = document.getElementById('show-register');
+        const showLoginBtn = document.getElementById('show-login');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        showRegisterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+        });
+
+        showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm['login-email'].value;
+            const password = loginForm['login-password'].value;
+            const errorP = document.getElementById('login-error');
+            try {
+                errorP.classList.add('hidden');
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                console.error("Login failed:", error);
+                errorP.textContent = "Email ou palavra-passe inválidos.";
+                errorP.classList.remove('hidden');
+            }
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const restaurantName = registerForm['register-restaurant'].value;
+            const email = registerForm['register-email'].value;
+            const password = registerForm['register-password'].value;
+            const errorP = document.getElementById('register-error');
+
+            try {
+                errorP.classList.add('hidden');
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Criar o documento do restaurante e as categorias iniciais
+                const restaurantDocRef = doc(db, 'restaurants', user.uid);
+                await setDoc(restaurantDocRef, { name: restaurantName, owner: user.uid, createdAt: new Date() });
+                
+                // Definir categorias iniciais para o novo restaurante
+                ingredientCategories = ['CARNES', 'LATICÍNIOS', 'HORTIFRUTI', 'MERCEARIA', 'PEIXES'];
+                dishCategories = ['PRATO PRINCIPAL', 'MASSAS', 'PEIXES', 'EXECUTIVO', 'LANCHES', 'SALADAS', 'SOPAS', 'GRELHADOS', 'ACOMPANHAMENTOS'];
+                baseRecipeCategories = ['MOLHOS', 'ACOMPANHAMENTOS', 'CONSERVAS', 'TEMPEROS'];
+                directSaleCategories = ['REFRIGERANTES', 'CERVEJAS', 'SOBREMESAS'];
+                restaurantId = user.uid; // Definir o ID para a função saveCategories
+                await saveCategories();
+
+            } catch (error) {
+                console.error("Registration failed:", error);
+                errorP.textContent = "Erro ao criar conta. Tente outro email.";
+                errorP.classList.remove('hidden');
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+        });
+
     </script>
 
 </body>
