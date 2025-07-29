@@ -587,30 +587,36 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', async () => {
             // --- FIREBASE SETUP ---
             let db, auth, restaurantId;
 
-            // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
-            const firebaseConfig = {
-                apiKey: "YOUR_API_KEY",
-                authDomain: "YOUR_AUTH_DOMAIN",
-                projectId: "YOUR_PROJECT_ID",
-                storageBucket: "YOUR_STORAGE_BUCKET",
-                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-                appId: "YOUR_APP_ID"
-            };
+            // Função para buscar a configuração do Firebase de forma segura
+            async function getFirebaseConfig() {
+                try {
+                    // O caminho /.netlify/functions/ é o endpoint padrão para funções Netlify
+                    const response = await fetch('/.netlify/functions/firebase-config');
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok, status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to fetch Firebase config:', error);
+                    return null;
+                }
+            }
 
-            if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
-                document.getElementById('app-container').style.display = 'none';
-                document.getElementById('auth-view').innerHTML = `
-                    <div class="w-full max-w-lg mx-auto">
+            const firebaseConfig = await getFirebaseConfig();
+
+            if (!firebaseConfig || !firebaseConfig.projectId) {
+                document.body.innerHTML = `
+                    <div class="w-full h-screen flex items-center justify-center p-8 bg-gray-100">
                         <div class="text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                             <strong class="font-bold">Erro de Configuração!</strong>
-                            <span class="block sm:inline">A configuração do Firebase não foi encontrada. Por favor, edite o ficheiro HTML e substitua o objeto 'firebaseConfig' pelas suas credenciais do Firebase.</span>
+                            <span class="block sm:inline">Não foi possível carregar a configuração do Firebase. Verifique as variáveis de ambiente no Netlify e se o ficheiro 'netlify.toml' está correto.</span>
                         </div>
                     </div>
                 `;
