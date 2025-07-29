@@ -596,21 +596,36 @@
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            // --- FIREBASE SETUP ---
-            let db, auth, restaurantId;
+        // --- FIREBASE SETUP ---
+        let db, auth, restaurantId;
 
-            // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
-            const firebaseConfig = {
-                apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
-                authDomain: "cmv-ia.firebaseapp.com",
-                projectId: "cmv-ia",
-                storageBucket: "cmv-ia.firebasestorage.app",
-                messagingSenderId: "587984899697",
-                appId: "1:587984899697:web:d268195678b0e81cb515d0",
-                measurementId: "G-V0R45F3XS5"
+        // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
+            authDomain: "cmv-ia.firebaseapp.com",
+            projectId: "cmv-ia",
+            storageBucket: "cmv-ia.firebasestorage.app",
+            messagingSenderId: "587984899697",
+            appId: "1:587984899697:web:d268195678b0e81cb515d0",
+            measurementId: "G-V0R45F3XS5"
+        };
+        
+        function getCollectionPath(collectionName) {
+            return `/restaurants/${restaurantId}/${collectionName}`;
+        }
+
+        async function saveCategories() {
+            if (!restaurantId) return;
+            const categoriesData = {
+                ingredientCategories,
+                dishCategories,
+                baseRecipeCategories,
+                directSaleCategories
             };
+            await setDoc(doc(db, getCollectionPath('categories'), 'main'), categoriesData);
+        }
 
+        document.addEventListener('DOMContentLoaded', async () => {
             if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
                 document.body.innerHTML = `
                     <div class="w-full h-screen flex items-center justify-center p-8 bg-gray-100">
@@ -1241,7 +1256,7 @@
                     `;
 
                     pratosDaCategoria.forEach(prato => {
-                        const custoPorcao = (prato.custoTotal / prato.header.rendimentoReceitaKg) * (prato.header.tamanhoPorcaoG / 1000) || 0;
+                        const custoPorPorcao = (prato.custoTotal / prato.header.rendimentoReceitaKg) * (prato.header.tamanhoPorcaoG / 1000) || 0;
                         const precoVenda = prato.header.precoVenda || 0;
                         const margemAtual = precoVenda > 0 ? ((precoVenda - custoPorcao) / precoVenda) * 100 : 0;
 
@@ -2079,3 +2094,4 @@
 
 </body>
 </html>
+
