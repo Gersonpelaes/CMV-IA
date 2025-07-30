@@ -357,8 +357,11 @@
                             <h3 class="text-lg font-semibold mb-3 text-yellow-700">Atualizar Preços de Compra</h3>
                             <form id="form-atualizar-precos" class="space-y-2 max-h-64 overflow-y-auto pr-2"></form>
                             <div class="flex gap-2 mt-4">
-                                <button type="button" id="btn-salvar-novos-precos" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
                                 <button type="button" id="btn-cancelar-atualizacao" class="flex-1 btn-secondary">Cancelar</button>
+                                <button type="button" id="btn-salvar-novos-precos" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex justify-center items-center">
+                                    <span class="btn-text">Salvar</span>
+                                    <span class="loader hidden ml-2"></span>
+                                </button>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -827,6 +830,15 @@
                         if (['consultar', 'precos', 'margem', 'analise'].includes(activeView)) {
                             showView(activeView);
                         }
+                    }
+                });
+                
+                // Listener para Histórico de Preços
+                onSnapshot(query(collection(db, getCollectionPath('price_history'))), (snapshot) => {
+                    historicoPrecos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const activeViewEl = document.querySelector('.view.active');
+                    if (activeViewEl && activeViewEl.id === 'analise-view') {
+                        renderizarAnaliseDeCustos(searchAnaliseInput.value, filterAnaliseSelect.value);
                     }
                 });
             }
@@ -2099,9 +2111,69 @@
             });
 
             btnSalvarNovosPrecos.addEventListener('click', async () => {
-                // This function needs to be updated to save to Firestore
-                alert('Funcionalidade de atualização de preços em lote em desenvolvimento para Firestore.');
-                painelAtualizarPrecos.classList.add('hidden');
+                const button = btnSalvarNovosPrecos;
+                const btnText = button.querySelector('.btn-text');
+                const loader = button.querySelector('.loader');
+                btnText.classList.add('hidden');
+                loader.classList.remove('hidden');
+                button.disabled = true;
+
+                try {
+                    // 1. Capturar os custos das receitas ANTES da atualização
+                    const recipeCostsBeforeUpdate = receitasSalvas.map(recipe => ({
+                        id: recipe.id,
+                        header: { descricaoProduto: recipe.header.descricaoProduto },
+                        type: recipe.type,
+                        custoTotal: recalcularCustoFicha(recipe, ingredientes) // Usa os preços atuais
+                    }));
+
+                    const historyEntry = {
+                        date: new Date().toISOString(),
+                        recipeCosts: recipeCostsBeforeUpdate
+                    };
+
+                    // 2. Preparar as atualizações dos preços dos ingredientes
+                    const inputs = formAtualizarPrecos.querySelectorAll('input[type="number"]');
+                    const updatePromises = [];
+
+                    inputs.forEach(input => {
+                        const ingredientId = input.dataset.id;
+                        const newPrice = parseFloat(input.value);
+                        const ingredient = ingredientes.find(ing => ing.id === ingredientId);
+
+                        if (ingredient && !isNaN(newPrice) && newPrice > 0 && newPrice !== ingredient.precoCompra) {
+                            const newCustoBase = newPrice / ingredient.unidadeCompraQtd;
+                            const ingredientRef = doc(db, getCollectionPath('ingredients'), ingredientId);
+                            updatePromises.push(updateDoc(ingredientRef, {
+                                precoCompra: newPrice,
+                                custoBase: newCustoBase
+                            }));
+                        }
+                    });
+
+                    // 3. Adicionar a gravação do histórico à lista de promessas, se houver atualizações
+                    if (updatePromises.length > 0 && recipeCostsBeforeUpdate.length > 0) {
+                        updatePromises.push(addDoc(collection(db, getCollectionPath('price_history')), historyEntry));
+                    }
+
+                    // 4. Executar todas as operações
+                    if (updatePromises.length > 0) {
+                        await Promise.all(updatePromises);
+                        alert('Preços e histórico de custos atualizados com sucesso!');
+                    } else {
+                        alert('Nenhum preço foi alterado.');
+                    }
+                    
+                    painelAtualizarPrecos.classList.add('hidden');
+
+                } catch (error) {
+                    console.error("Erro ao atualizar preços:", error);
+                    alert(`Falha ao atualizar preços: ${error.message}`);
+                } finally {
+                    btnText.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                    button.disabled = false;
+                }
             });
             
             let isRecognizing = false;
