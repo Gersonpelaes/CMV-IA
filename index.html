@@ -525,6 +525,7 @@
                      <div class="card p-4 md:p-8">
                          <div class="flex justify-between items-center mb-6 border-b border-border-color pb-4">
                             <h3 class="text-2xl font-bold">Consultar Fichas Salvas</h3>
+                            <button type="button" id="btn-importar-ficha" class="btn-secondary text-sm bg-purple-600 hover:bg-purple-700 text-white">✨ Importar Ficha Técnica com IA</button>
                         </div>
                         <div id="lista-fichas-salvas" class="space-y-3"></div>
                     </div>
@@ -652,6 +653,28 @@
         </div>
     </div>
 
+    <!-- Modal de Importação de Ficha Técnica -->
+    <div id="import-recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-2xl transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Importador Inteligente de Ficha Técnica</h3>
+                <button id="btn-close-recipe-modal" class="text-secondary hover:text-primary">&times;</button>
+            </div>
+            <div class="text-sm bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800 mb-4">
+                <p class="font-semibold">Instruções:</p>
+                <p>Copie toda a sua ficha técnica da sua planilha (nome, lista de ingredientes, modo de preparo) e cole no campo abaixo. A IA irá ler, interpretar e preencher a ficha para si.</p>
+            </div>
+            <textarea id="import-recipe-textarea" rows="10" class="w-full form-input" placeholder="Cole a sua ficha técnica completa aqui..."></textarea>
+            <div class="flex gap-4 mt-4">
+                <button id="btn-cancel-recipe-import" class="w-full btn-secondary">Cancelar</button>
+                <button id="btn-process-recipe-import" class="w-full btn-primary bg-purple-600 hover:bg-purple-700 flex justify-center items-center">
+                    <span class="btn-text">✨ Analisar Ficha com IA</span>
+                    <span class="loader hidden ml-2"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -765,7 +788,7 @@
             const formProdutoVenda = document.getElementById('form-produto-venda');
             const listaProdutosVendaDiv = document.getElementById('lista-produtos-venda');
             const categoriaProdutoVendaSelect = document.getElementById('categoria-produto-venda');
-            // Seletores do Modal de Importação
+            // Seletores do Modal de Importação de Ingredientes
             const importModal = document.getElementById('import-modal');
             const btnCloseModal = document.getElementById('btn-close-modal');
             const btnCancelImport = document.getElementById('btn-cancel-import');
@@ -775,6 +798,14 @@
             const importStep1 = document.getElementById('import-step-1');
             const importStep2 = document.getElementById('import-step-2');
             const importEditTableBody = document.getElementById('import-edit-table-body');
+            // Seletores do Modal de Importação de Ficha
+            const btnImportarFicha = document.getElementById('btn-importar-ficha');
+            const importRecipeModal = document.getElementById('import-recipe-modal');
+            const btnCloseRecipeModal = document.getElementById('btn-close-recipe-modal');
+            const btnCancelRecipeImport = document.getElementById('btn-cancel-recipe-import');
+            const importRecipeTextarea = document.getElementById('import-recipe-textarea');
+            const btnProcessRecipeImport = document.getElementById('btn-process-recipe-import');
+
 
             // --- FUNÇÕES DE SETUP DO FIREBASE (MOVENDO PARA DENTRO DO DOMCONTENTLOADED) ---
             function getCollectionPath(collectionName) {
@@ -1963,7 +1994,7 @@
             rendimentoReceitaKgInput.addEventListener('input', calcularCustosFinais);
             tamanhoPorcaoGInput.addEventListener('input', calcularCustosFinais);
             
-            // --- LÓGICA DE IMPORTAÇÃO ---
+            // --- LÓGICA DE IMPORTAÇÃO DE INGREDIENTES ---
             btnImportarIngredientes.addEventListener('click', () => {
                 importModal.classList.remove('hidden');
                 importModal.classList.add('flex');
@@ -2091,7 +2122,7 @@
                 }
             });
 
-
+            // --- LÓGICA DE ATUALIZAÇÃO DE PREÇOS ---
             btnAbrirAtualizarPrecos.addEventListener('click', () => {
                 formAtualizarPrecos.innerHTML = '';
                 ingredientes.forEach(ing => {
@@ -2119,12 +2150,11 @@
                 button.disabled = true;
 
                 try {
-                    // 1. Capturar os custos das receitas ANTES da atualização
                     const recipeCostsBeforeUpdate = receitasSalvas.map(recipe => ({
                         id: recipe.id,
                         header: { descricaoProduto: recipe.header.descricaoProduto },
                         type: recipe.type,
-                        custoTotal: recalcularCustoFicha(recipe, ingredientes) // Usa os preços atuais
+                        custoTotal: recalcularCustoFicha(recipe, ingredientes)
                     }));
 
                     const historyEntry = {
@@ -2132,7 +2162,6 @@
                         recipeCosts: recipeCostsBeforeUpdate
                     };
 
-                    // 2. Preparar as atualizações dos preços dos ingredientes
                     const inputs = formAtualizarPrecos.querySelectorAll('input[type="number"]');
                     const updatePromises = [];
 
@@ -2151,12 +2180,10 @@
                         }
                     });
 
-                    // 3. Adicionar a gravação do histórico à lista de promessas, se houver atualizações
                     if (updatePromises.length > 0 && recipeCostsBeforeUpdate.length > 0) {
                         updatePromises.push(addDoc(collection(db, getCollectionPath('price_history')), historyEntry));
                     }
 
-                    // 4. Executar todas as operações
                     if (updatePromises.length > 0) {
                         await Promise.all(updatePromises);
                         alert('Preços e histórico de custos atualizados com sucesso!');
