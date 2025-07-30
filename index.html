@@ -594,6 +594,61 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal de Importação de Ingredientes -->
+    <div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-4xl transform transition-all flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                <h3 class="text-2xl font-bold">Importar Ingredientes em Massa</h3>
+                <button id="btn-close-modal" class="text-secondary hover:text-primary">&times;</button>
+            </div>
+            
+            <div id="import-step-1" class="flex-shrink-0">
+                <div class="text-sm bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+                    <p class="font-semibold">Passo 1: Cole os seus dados</p>
+                    <p>Use <strong>1, 3 ou 5 colunas</strong>, separadas por tabulação (copiar do Excel/Sheets):</p>
+                    <ul class="list-disc list-inside ml-4">
+                        <li><code class="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">Nome</code> (mínimo)</li>
+                        <li><code class="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">Nome; Unidade; Categoria</code> (básico)</li>
+                        <li><code class="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">Nome; Preço; Qtd Emb.; Unidade; Categoria</code> (completo)</li>
+                    </ul>
+                </div>
+                <textarea id="import-textarea" rows="8" class="w-full form-input" placeholder="Cole os seus dados aqui..."></textarea>
+            </div>
+
+            <div id="import-step-2" class="hidden flex-grow overflow-y-auto mt-4">
+                 <p class="font-semibold text-sm mb-2">Passo 2: Complete os dados e salve</p>
+                 <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="table-header">
+                            <tr>
+                                <th class="px-2 py-2 text-left font-medium text-secondary">Nome</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary w-28">Preço Compra</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary w-28">Qtd. Embalagem</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary">Unidade</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary">Categoria</th>
+                            </tr>
+                        </thead>
+                        <tbody id="import-edit-table-body">
+                            <!-- Linhas de edição serão inseridas aqui -->
+                        </tbody>
+                    </table>
+                 </div>
+            </div>
+
+            <div class="flex gap-4 mt-4 flex-shrink-0">
+                <button id="btn-cancel-import" class="w-full btn-secondary">Cancelar</button>
+                <button id="btn-load-for-edit" class="w-full btn-primary">
+                    <span class="btn-text">Carregar para Edição</span>
+                </button>
+                <button id="btn-save-import" class="w-full btn-primary bg-green-600 hover:bg-green-700 hidden flex justify-center items-center">
+                    <span class="btn-text">Salvar Importação</span>
+                    <span class="loader hidden ml-2"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -707,6 +762,16 @@
             const formProdutoVenda = document.getElementById('form-produto-venda');
             const listaProdutosVendaDiv = document.getElementById('lista-produtos-venda');
             const categoriaProdutoVendaSelect = document.getElementById('categoria-produto-venda');
+            // Seletores do Modal de Importação
+            const importModal = document.getElementById('import-modal');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+            const btnCancelImport = document.getElementById('btn-cancel-import');
+            const importTextarea = document.getElementById('import-textarea');
+            const btnLoadForEdit = document.getElementById('btn-load-for-edit');
+            const btnSaveImport = document.getElementById('btn-save-import');
+            const importStep1 = document.getElementById('import-step-1');
+            const importStep2 = document.getElementById('import-step-2');
+            const importEditTableBody = document.getElementById('import-edit-table-body');
 
             // --- FUNÇÕES DE SETUP DO FIREBASE (MOVENDO PARA DENTRO DO DOMCONTENTLOADED) ---
             function getCollectionPath(collectionName) {
@@ -775,7 +840,7 @@
                 fichas: 'Ficha Técnica Gerencial',
                 consultar: 'Consultar Fichas Salvas',
                 analise: 'Análise de Custos',
-                margem: 'Relatório de Margem',
+                margem: 'Relatório de Margens',
                 precos: 'Lista de Preços de Venda',
                 vendas: 'Análise de Vendas e CMV'
             };
@@ -1885,7 +1950,135 @@
             inputMarkupPrato.addEventListener('input', calcularCustosFinais);
             rendimentoReceitaKgInput.addEventListener('input', calcularCustosFinais);
             tamanhoPorcaoGInput.addEventListener('input', calcularCustosFinais);
-            btnImportarIngredientes.addEventListener('click', () => alert('Funcionalidade de importação em desenvolvimento!'));
+            
+            // --- LÓGICA DE IMPORTAÇÃO ---
+            btnImportarIngredientes.addEventListener('click', () => {
+                importModal.classList.remove('hidden');
+                importModal.classList.add('flex');
+                importStep1.classList.remove('hidden');
+                importStep2.classList.add('hidden');
+                btnLoadForEdit.classList.remove('hidden');
+                btnSaveImport.classList.add('hidden');
+                importTextarea.value = '';
+                importEditTableBody.innerHTML = '';
+            });
+
+            const closeModal = () => {
+                importModal.classList.add('hidden');
+                importModal.classList.remove('flex');
+            };
+
+            btnCloseModal.addEventListener('click', closeModal);
+            btnCancelImport.addEventListener('click', closeModal);
+
+            btnLoadForEdit.addEventListener('click', () => {
+                const data = importTextarea.value.trim();
+                const lines = data.split('\n');
+                importEditTableBody.innerHTML = '';
+                let hasContent = false;
+
+                lines.forEach((line, index) => {
+                    if (line.trim() === '') return;
+                    const parts = line.split('\t');
+                    
+                    let nome = '', preco = '', qtd = '', unidade = '', categoria = '';
+
+                    if (parts.length >= 5) { // Formato completo
+                        [nome, preco, qtd, unidade, categoria] = parts;
+                    } else if (parts.length >= 3) { // Formato básico
+                        [nome, unidade, categoria] = parts;
+                    } else if (parts.length >= 1 && parts[0].trim() !== '') { // Formato mínimo
+                        [nome] = parts;
+                    }
+                    else {
+                        return; // Ignora linhas mal formatadas
+                    }
+                    
+                    hasContent = true;
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+                    tr.innerHTML = `
+                        <td class="px-2 py-1"><input type="text" value="${nome.trim().toUpperCase()}" class="form-input text-sm p-1 import-nome"></td>
+                        <td class="px-2 py-1"><input type="number" step="0.01" value="${preco.trim().replace(',', '.')}" placeholder="0.00" class="form-input text-sm p-1 import-preco"></td>
+                        <td class="px-2 py-1"><input type="number" step="0.001" value="${qtd.trim().replace(',', '.')}" placeholder="0.000" class="form-input text-sm p-1 import-qtd"></td>
+                        <td class="px-2 py-1"><input type="text" value="${unidade.trim()}" class="form-input text-sm p-1 import-unidade"></td>
+                        <td class="px-2 py-1"><input type="text" value="${categoria.trim().toUpperCase()}" class="form-input text-sm p-1 import-categoria"></td>
+                    `;
+                    importEditTableBody.appendChild(tr);
+                });
+
+                if (hasContent) {
+                    importStep1.classList.add('hidden');
+                    importStep2.classList.remove('hidden');
+                    btnLoadForEdit.classList.add('hidden');
+                    btnSaveImport.classList.remove('hidden');
+                } else {
+                    alert('Nenhum dado válido encontrado. Verifique o formato e tente novamente.');
+                }
+            });
+
+            btnSaveImport.addEventListener('click', async () => {
+                const button = btnSaveImport;
+                const btnText = button.querySelector('.btn-text');
+                const loader = button.querySelector('.loader');
+
+                btnText.classList.add('hidden');
+                loader.classList.remove('hidden');
+                button.disabled = true;
+
+                const rows = importEditTableBody.querySelectorAll('tr');
+                const promises = [];
+                let successCount = 0;
+                let errorCount = 0;
+
+                rows.forEach(row => {
+                    try {
+                        const nome = row.querySelector('.import-nome').value;
+                        const precoCompra = parseFloat(row.querySelector('.import-preco').value);
+                        const unidadeCompraQtd = parseFloat(row.querySelector('.import-qtd').value);
+                        const unidadeBase = row.querySelector('.import-unidade').value;
+                        const category = row.querySelector('.import-categoria').value;
+
+                        if (!nome || isNaN(precoCompra) || isNaN(unidadeCompraQtd) || unidadeCompraQtd <= 0 || !unidadeBase || !category) {
+                            errorCount++;
+                            console.error("Linha com dados inválidos/incompletos:", {nome, precoCompra, unidadeCompraQtd, unidadeBase, category});
+                            return;
+                        }
+
+                        const newIngredient = {
+                            nome,
+                            precoCompra,
+                            unidadeCompraQtd,
+                            unidadeBase,
+                            category,
+                            unidadeCompraDesc: 'EMBALAGEM',
+                            rendimento: 100,
+                            custoBase: precoCompra / unidadeCompraQtd
+                        };
+
+                        promises.push(addDoc(collection(db, getCollectionPath('ingredients')), newIngredient));
+                        successCount++;
+
+                    } catch (e) {
+                        errorCount++;
+                        console.error('Erro ao processar linha da tabela de importação', e);
+                    }
+                });
+
+                try {
+                    await Promise.all(promises);
+                    alert(`${successCount} ingredientes importados com sucesso! ${errorCount > 0 ? `\n${errorCount} linhas continham erros e foram ignoradas.` : ''}`);
+                    closeModal();
+                } catch (error) {
+                    console.error("Erro ao salvar ingredientes no Firebase:", error);
+                    alert("Ocorreu um erro ao salvar os dados. Verifique a consola para mais detalhes.");
+                } finally {
+                    btnText.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                    button.disabled = false;
+                }
+            });
+
 
             btnAbrirAtualizarPrecos.addEventListener('click', () => {
                 formAtualizarPrecos.innerHTML = '';
