@@ -473,7 +473,6 @@
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Qtd. Bruta</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Custo Unit.</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Custo Total</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-receita" class="divide-y divide-border-color"></tbody>
@@ -719,7 +718,6 @@
             let dishCategories = [];
             let baseRecipeCategories = [];
             let directSaleCategories = [];
-            let editingIngredientId = null; // Para controlar a edição de ingredientes
             
             // --- SELETORES DE ELEMENTOS ---
             const appContainer = document.getElementById('app-container');
@@ -1148,23 +1146,13 @@
                         const li = document.createElement('li');
                         li.className = 'bg-form-bg p-3 rounded-lg flex justify-between items-center border border-border-color';
                         li.innerHTML = `
-                            <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                                <div>
-                                    <span class="font-semibold">${ing.nome}</span>
-                                    <div class="text-xs text-secondary">Compra: ${ing.unidadeCompraQtd} ${ing.unidadeBase} por R$ ${ing.precoCompra.toFixed(2)}</div>
-                                </div>
-                                <div class="text-right">
-                                    <span class="font-bold text-blue-600">R$ ${ing.custoBase.toFixed(2)} / ${ing.unidadeBase}</span>
-                                    <div class="text-xs text-secondary">Rend: ${ing.rendimento}%</div>
-                                </div>
+                            <div>
+                                <span class="font-semibold">${ing.nome}</span>
+                                <div class="text-xs text-secondary">Compra: ${ing.unidadeCompraQtd} ${ing.unidadeBase} por R$ ${ing.precoCompra.toFixed(2)}</div>
                             </div>
-                            <div class="flex gap-2 ml-4">
-                                <button data-id="${ing.id}" class="btn-edit-ingrediente p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full" title="Editar">
-                                    <svg class="w-4 h-4 text-secondary pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z"></path></svg>
-                                </button>
-                                <button data-id="${ing.id}" class="btn-delete-ingrediente p-2 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full" title="Excluir">
-                                    <svg class="w-4 h-4 text-red-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
+                            <div class="text-right">
+                                <span class="font-bold text-blue-600">R$ ${ing.custoBase.toFixed(2)} / ${ing.unidadeBase}</span>
+                                <div class="text-xs text-secondary">Rend: ${ing.rendimento}%</div>
                             </div>`;
                         ul.appendChild(li);
                     });
@@ -1282,7 +1270,7 @@
 
             function renderizarFichaAtual() {
                 tabelaReceitaBody.innerHTML = '';
-                fichaAtual.componentes.forEach((item, index) => {
+                fichaAtual.componentes.forEach(item => {
                     const tr = document.createElement('tr');
                     tr.className = `table-row hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${item.type === 'rec' ? 'text-purple-600 dark:text-purple-400' : ''}`;
                     tr.innerHTML = `
@@ -1292,10 +1280,7 @@
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">${item.fatorCorrecao.toFixed(3)}</td>
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">${item.qtdeBruta.toFixed(3)}</td>
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">R$ ${item.custoUnitario.toFixed(2)}</td>
-                        <td class="px-4 py-2 whitespace-nowrap font-semibold text-amber-600">R$ ${item.custoTotal.toFixed(2)}</td>
-                        <td class="px-4 py-2 text-center">
-                            <button type="button" class="btn-delete-item text-red-500 hover:text-red-700 font-bold text-lg" data-index="${index}" title="Remover Item">&times;</button>
-                        </td>`;
+                        <td class="px-4 py-2 whitespace-nowrap font-semibold text-amber-600">R$ ${item.custoTotal.toFixed(2)}</td>`;
                     tabelaReceitaBody.appendChild(tr);
                 });
                 calcularCustosFinais();
@@ -1661,7 +1646,7 @@
                 const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory };
                 const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -1732,115 +1717,6 @@
                 } finally {
                     loader.classList.add('hidden');
                     buttonText.textContent = '✨ Gerar Foto com IA';
-                    button.disabled = false;
-                }
-            }
-            
-            async function callGeminiForRecipeImport(pastedText) {
-                const button = btnProcessRecipeImport;
-                const loader = button.querySelector('.loader');
-                const buttonText = button.querySelector('.btn-text');
-                
-                loader.classList.remove('hidden');
-                buttonText.textContent = 'Analisando...';
-                button.disabled = true;
-
-                const prompt = `Analise o texto da seguinte ficha técnica. Extraia o nome da receita, uma categoria sugerida para pratos (ex: PRATO PRINCIPAL, SOBREMESA), os passos do modo de preparo, e uma lista de ingredientes. Para cada ingrediente, identifique o nome, a quantidade líquida (como um número) e a unidade de medida (como uma string, ex: 'kg', 'g', 'un', 'ml', 'l'). Retorne a resposta estritamente como um objeto JSON com a seguinte estrutura: { "recipeName": "string", "category": "string", "preparationSteps": "string", "ingredients": [ { "name": "string", "quantity": number, "unit": "string" } ] }. O texto é: "${pastedText}"`;
-                
-                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                const payload = { contents: chatHistory };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        const errorBody = await response.text();
-                        console.error('Erro na API Gemini:', response.status, errorBody);
-                        throw new Error(`A API retornou um erro: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    console.log('Resposta da API Gemini:', JSON.stringify(result, null, 2));
-                    
-                    const textResponse = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                    if (textResponse) {
-                        let jsonResponse;
-                        try {
-                            const cleanedText = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-                            jsonResponse = JSON.parse(cleanedText);
-                        } catch (parseError) {
-                            console.error("Erro ao fazer o parse do JSON da API:", parseError, "Texto recebido:", textResponse);
-                            throw new Error("A resposta da IA não estava em formato JSON válido.");
-                        }
-                        
-                        limparFicha();
-                        document.getElementById('descricao-produto').value = (jsonResponse.recipeName || '').toUpperCase();
-                        document.getElementById('categoria-produto').value = (jsonResponse.category || '').toUpperCase();
-                        document.getElementById('modo-preparo').value = (jsonResponse.preparationSteps || '').toUpperCase();
-
-                        const newlyAddedIngredients = [];
-                        
-                        for (const aiIngredient of jsonResponse.ingredients) {
-                            let foundIng = ingredientes.find(dbIng => dbIng.nome.toLowerCase() === aiIngredient.name.toLowerCase().trim());
-                            
-                            if (!foundIng) {
-                                newlyAddedIngredients.push(aiIngredient.name);
-                                const newIngredientData = {
-                                    nome: aiIngredient.name.toUpperCase().trim(),
-                                    category: 'IMPORTADO PELA IA',
-                                    precoCompra: 0,
-                                    unidadeCompraQtd: 1,
-                                    unidadeCompraDesc: 'A DEFINIR',
-                                    unidadeBase: aiIngredient.unit || 'un',
-                                    rendimento: 100,
-                                    custoBase: 0
-                                };
-                                const docRef = await addDoc(collection(db, getCollectionPath('ingredients')), newIngredientData);
-                                foundIng = { id: docRef.id, ...newIngredientData };
-                            }
-
-                            const qtdeLiquida = parseFloat(aiIngredient.quantity) || 0;
-                            const fatorCorrecao = 1 / (foundIng.rendimento / 100);
-                            const qtdeBruta = qtdeLiquida * fatorCorrecao;
-                            const itemParaFicha = { 
-                                type: 'ing', 
-                                nome: foundIng.nome, 
-                                unidade: foundIng.unidadeBase, 
-                                qtdeLiquida, 
-                                fatorCorrecao, 
-                                qtdeBruta, 
-                                custoUnitario: foundIng.custoBase, 
-                                custoTotal: qtdeBruta * foundIng.custoBase 
-                            };
-                            fichaAtual.componentes.push(itemParaFicha);
-                        }
-
-                        renderizarFichaAtual();
-                        showView('fichas');
-                        closeRecipeModal();
-
-                        if (newlyAddedIngredients.length > 0) {
-                            alert(`Ficha preenchida! Atenção: Os seguintes ingredientes não existiam e foram cadastrados com valores padrão (preço R$0):\n\n- ${newlyAddedIngredients.join('\n- ')}\n\nPor favor, vá ao ecrã de Ingredientes para atualizar os seus dados.`);
-                        } else {
-                            alert('Ficha importada e preenchida com sucesso!');
-                        }
-
-                    } else {
-                        throw new Error("Resposta da API inválida ou vazia.");
-                    }
-                } catch (error) {
-                    console.error("Erro ao chamar ou processar a resposta da API Gemini:", error);
-                    alert(`Ocorreu um erro ao importar a receita. Verifique o formato do texto colado e tente novamente. Detalhes do erro na consola: ${error.message}`);
-                } finally {
-                    loader.classList.add('hidden');
-                    buttonText.textContent = '✨ Analisar Ficha com IA';
                     button.disabled = false;
                 }
             }
@@ -2016,12 +1892,8 @@
                 const form = e.target;
                 const precoCompra = parseFloat(form['preco-compra'].value);
                 const unidadeCompraQtd = parseFloat(form['unidade-compra-qtd'].value);
-                if (!precoCompra || !unidadeCompraQtd || unidadeCompraQtd <= 0) { 
-                    alert("Preço e quantidade da compra devem ser valores válidos e positivos."); 
-                    return; 
-                }
-                
-                const ingredientData = {
+                if (!precoCompra || !unidadeCompraQtd || unidadeCompraQtd <= 0) { alert("Preço e quantidade da compra devem ser valores válidos e positivos."); return; }
+                const newIngredient = {
                     nome: form['nome-ingrediente'].value.toUpperCase(), 
                     category: form['categoria-ingrediente'].value, 
                     precoCompra, 
@@ -2031,17 +1903,11 @@
                     rendimento: parseFloat(form['rendimento-ingrediente'].value), 
                     custoBase: precoCompra / unidadeCompraQtd
                 };
-
                 try {
-                    if (editingIngredientId) {
-                        const ingredientRef = doc(db, getCollectionPath('ingredients'), editingIngredientId);
-                        await updateDoc(ingredientRef, ingredientData);
-                        alert('Ingrediente atualizado com sucesso!');
-                    } else {
-                        await addDoc(collection(db, getCollectionPath('ingredients')), ingredientData);
-                        alert('Ingrediente salvo com sucesso!');
-                    }
-                    cancelEditIngredient();
+                    await addDoc(collection(db, getCollectionPath('ingredients')), newIngredient);
+                    alert('Ingrediente salvo com sucesso!');
+                    form.reset();
+                    form['rendimento-ingrediente'].value = '100';
                 } catch (error) {
                     console.error("Erro ao salvar ingrediente:", error);
                     alert(`Falha ao salvar ingrediente: ${error.message}`);
@@ -2255,30 +2121,6 @@
                     button.disabled = false;
                 }
             });
-
-            // --- LÓGICA DE IMPORTAÇÃO DE FICHA TÉCNICA ---
-            const openRecipeModal = () => {
-                importRecipeModal.classList.remove('hidden');
-                importRecipeModal.classList.add('flex');
-                importRecipeTextarea.value = '';
-            };
-            const closeRecipeModal = () => {
-                importRecipeModal.classList.add('hidden');
-                importRecipeModal.classList.remove('flex');
-            };
-
-            btnImportarFicha.addEventListener('click', openRecipeModal);
-            btnCloseRecipeModal.addEventListener('click', closeRecipeModal);
-            btnCancelRecipeImport.addEventListener('click', closeRecipeModal);
-            btnProcessRecipeImport.addEventListener('click', () => {
-                const text = importRecipeTextarea.value;
-                if (text.trim() === '') {
-                    alert('Por favor, cole o conteúdo da sua ficha técnica na área de texto.');
-                    return;
-                }
-                callGeminiForRecipeImport(text);
-            });
-
 
             // --- LÓGICA DE ATUALIZAÇÃO DE PREÇOS ---
             btnAbrirAtualizarPrecos.addEventListener('click', () => {
@@ -2581,85 +2423,6 @@
                 await signOut(auth);
             });
 
-            // --- LÓGICA DE EDIÇÃO/EXCLUSÃO DE INGREDIENTES ---
-            listaIngredientesDiv.addEventListener('click', (e) => {
-                const editBtn = e.target.closest('.btn-edit-ingrediente');
-                const deleteBtn = e.target.closest('.btn-delete-ingrediente');
-
-                if (editBtn) {
-                    handleEditIngredient(editBtn.dataset.id);
-                }
-                if (deleteBtn) {
-                    handleDeleteIngredient(deleteBtn.dataset.id);
-                }
-            });
-
-            async function handleDeleteIngredient(id) {
-                try {
-                    await deleteDoc(doc(db, getCollectionPath('ingredients'), id));
-                } catch (error) {
-                    console.error("Erro ao excluir ingrediente:", error);
-                    alert("Falha ao excluir o ingrediente.");
-                }
-            }
-
-            function handleEditIngredient(id) {
-                const ingredientToEdit = ingredientes.find(ing => ing.id === id);
-                if (!ingredientToEdit) return;
-
-                editingIngredientId = id;
-
-                formIngrediente['nome-ingrediente'].value = ingredientToEdit.nome;
-                formIngrediente['categoria-ingrediente'].value = ingredientToEdit.category;
-                formIngrediente['preco-compra'].value = ingredientToEdit.precoCompra;
-                formIngrediente['unidade-compra-desc'].value = ingredientToEdit.unidadeCompraDesc;
-                formIngrediente['unidade-compra-qtd'].value = ingredientToEdit.unidadeCompraQtd;
-                formIngrediente['unidade-base'].value = ingredientToEdit.unidadeBase;
-                formIngrediente['rendimento-ingrediente'].value = ingredientToEdit.rendimento;
-
-                const submitBtn = formIngrediente.querySelector('button[type="submit"]');
-                submitBtn.textContent = 'Atualizar Ingrediente';
-                submitBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-
-                if (!document.getElementById('btn-cancel-edit-ingrediente')) {
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.type = 'button';
-                    cancelBtn.id = 'btn-cancel-edit-ingrediente';
-                    cancelBtn.textContent = 'Cancelar Edição';
-                    cancelBtn.className = 'w-full btn-secondary mt-2';
-                    cancelBtn.onclick = cancelEditIngredient;
-                    submitBtn.insertAdjacentElement('afterend', cancelBtn);
-                }
-                
-                formIngrediente.scrollIntoView({ behavior: 'smooth' });
-            }
-
-            function cancelEditIngredient() {
-                editingIngredientId = null;
-                formIngrediente.reset();
-                formIngrediente['rendimento-ingrediente'].value = '100';
-
-                const submitBtn = formIngrediente.querySelector('button[type="submit"]');
-                submitBtn.textContent = 'Salvar Ingrediente';
-                submitBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                
-                const cancelBtn = document.getElementById('btn-cancel-edit-ingrediente');
-                if (cancelBtn) {
-                    cancelBtn.remove();
-                }
-            }
-
-            // --- LÓGICA DE EXCLUSÃO DE ITEM DA FICHA ---
-            tabelaReceitaBody.addEventListener('click', (e) => {
-                const deleteBtn = e.target.closest('.btn-delete-item');
-                if (deleteBtn) {
-                    const indexToRemove = parseInt(deleteBtn.dataset.index, 10);
-                    fichaAtual.componentes.splice(indexToRemove, 1);
-                    renderizarFichaAtual();
-                }
-            });
-
-
             // --- INICIALIZAÇÃO DO FIREBASE ---
             try {
                 const app = initializeApp(firebaseConfig);
@@ -2705,4 +2468,3 @@
 
 </body>
 </html>
-
