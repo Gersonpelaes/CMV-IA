@@ -473,6 +473,7 @@
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Qtd. Bruta</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Custo Unit.</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Custo Total</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-receita" class="divide-y divide-border-color"></tbody>
@@ -1281,7 +1282,7 @@
 
             function renderizarFichaAtual() {
                 tabelaReceitaBody.innerHTML = '';
-                fichaAtual.componentes.forEach(item => {
+                fichaAtual.componentes.forEach((item, index) => {
                     const tr = document.createElement('tr');
                     tr.className = `table-row hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${item.type === 'rec' ? 'text-purple-600 dark:text-purple-400' : ''}`;
                     tr.innerHTML = `
@@ -1291,7 +1292,10 @@
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">${item.fatorCorrecao.toFixed(3)}</td>
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">${item.qtdeBruta.toFixed(3)}</td>
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">R$ ${item.custoUnitario.toFixed(2)}</td>
-                        <td class="px-4 py-2 whitespace-nowrap font-semibold text-amber-600">R$ ${item.custoTotal.toFixed(2)}</td>`;
+                        <td class="px-4 py-2 whitespace-nowrap font-semibold text-amber-600">R$ ${item.custoTotal.toFixed(2)}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button type="button" class="btn-delete-item text-red-500 hover:text-red-700 font-bold text-lg" data-index="${index}" title="Remover Item">&times;</button>
+                        </td>`;
                     tabelaReceitaBody.appendChild(tr);
                 });
                 calcularCustosFinais();
@@ -1754,11 +1758,27 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        console.error('Erro na API Gemini:', response.status, errorBody);
+                        throw new Error(`A API retornou um erro: ${response.status}`);
+                    }
+
                     const result = await response.json();
+                    console.log('Resposta da API Gemini:', JSON.stringify(result, null, 2));
                     
-                    if (result.candidates && result.candidates[0].content.parts[0].text) {
-                        const textResponse = result.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const jsonResponse = JSON.parse(textResponse);
+                    const textResponse = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (textResponse) {
+                        let jsonResponse;
+                        try {
+                            const cleanedText = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+                            jsonResponse = JSON.parse(cleanedText);
+                        } catch (parseError) {
+                            console.error("Erro ao fazer o parse do JSON da API:", parseError, "Texto recebido:", textResponse);
+                            throw new Error("A resposta da IA não estava em formato JSON válido.");
+                        }
                         
                         limparFicha();
                         document.getElementById('descricao-produto').value = (jsonResponse.recipeName || '').toUpperCase();
@@ -1817,7 +1837,7 @@
                     }
                 } catch (error) {
                     console.error("Erro ao chamar ou processar a resposta da API Gemini:", error);
-                    alert("Ocorreu um erro ao importar a receita. Verifique o formato do texto colado e tente novamente. Detalhes do erro na consola.");
+                    alert(`Ocorreu um erro ao importar a receita. Verifique o formato do texto colado e tente novamente. Detalhes do erro na consola: ${error.message}`);
                 } finally {
                     loader.classList.add('hidden');
                     buttonText.textContent = '✨ Analisar Ficha com IA';
@@ -2628,6 +2648,16 @@
                     cancelBtn.remove();
                 }
             }
+
+            // --- LÓGICA DE EXCLUSÃO DE ITEM DA FICHA ---
+            tabelaReceitaBody.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.btn-delete-item');
+                if (deleteBtn) {
+                    const indexToRemove = parseInt(deleteBtn.dataset.index, 10);
+                    fichaAtual.componentes.splice(indexToRemove, 1);
+                    renderizarFichaAtual();
+                }
+            });
 
 
             // --- INICIALIZAÇÃO DO FIREBASE ---
