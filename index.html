@@ -9,6 +9,10 @@
     <!-- Bibliotecas para gerar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Link para o Manifest do PWA -->
+    <link rel="manifest" href="manifest.json">
+    
     <style>
         :root {
             --bg-primary: #f3f4f6;
@@ -353,8 +357,11 @@
                             <h3 class="text-lg font-semibold mb-3 text-yellow-700">Atualizar Preços de Compra</h3>
                             <form id="form-atualizar-precos" class="space-y-2 max-h-64 overflow-y-auto pr-2"></form>
                             <div class="flex gap-2 mt-4">
-                                <button type="button" id="btn-salvar-novos-precos" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
                                 <button type="button" id="btn-cancelar-atualizacao" class="flex-1 btn-secondary">Cancelar</button>
+                                <button type="button" id="btn-salvar-novos-precos" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex justify-center items-center">
+                                    <span class="btn-text">Salvar</span>
+                                    <span class="loader hidden ml-2"></span>
+                                </button>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -518,6 +525,7 @@
                      <div class="card p-4 md:p-8">
                          <div class="flex justify-between items-center mb-6 border-b border-border-color pb-4">
                             <h3 class="text-2xl font-bold">Consultar Fichas Salvas</h3>
+                            <button type="button" id="btn-importar-ficha" class="btn-secondary text-sm bg-purple-600 hover:bg-purple-700 text-white">✨ Importar Ficha Técnica com IA</button>
                         </div>
                         <div id="lista-fichas-salvas" class="space-y-3"></div>
                     </div>
@@ -590,26 +598,93 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal de Importação de Ingredientes -->
+    <div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-4xl transform transition-all flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                <h3 class="text-2xl font-bold">Importar Ingredientes em Massa</h3>
+                <button id="btn-close-modal" class="text-secondary hover:text-primary">&times;</button>
+            </div>
+            
+            <div id="import-step-1" class="flex-shrink-0">
+                <div class="text-sm bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-4">
+                    <p class="font-semibold">Passo 1: Cole os seus dados</p>
+                    <p>Use <strong>1, 3 ou 5 colunas</strong>, separadas por tabulação (copiar do Excel/Sheets):</p>
+                    <ul class="list-disc list-inside ml-4">
+                        <li><code class="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">Nome</code> (mínimo)</li>
+                        <li><code class="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">Nome; Unidade; Categoria</code> (básico)</li>
+                        <li><code class="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">Nome; Preço; Qtd Emb.; Unidade; Categoria</code> (completo)</li>
+                    </ul>
+                </div>
+                <textarea id="import-textarea" rows="8" class="w-full form-input" placeholder="Cole os seus dados aqui..."></textarea>
+            </div>
+
+            <div id="import-step-2" class="hidden flex-grow overflow-y-auto mt-4">
+                 <p class="font-semibold text-sm mb-2">Passo 2: Complete os dados e salve</p>
+                 <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="table-header">
+                            <tr>
+                                <th class="px-2 py-2 text-left font-medium text-secondary">Nome</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary w-28">Preço Compra</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary w-28">Qtd. Embalagem</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary">Unidade</th>
+                                <th class="px-2 py-2 text-left font-medium text-secondary">Categoria</th>
+                            </tr>
+                        </thead>
+                        <tbody id="import-edit-table-body">
+                            <!-- Linhas de edição serão inseridas aqui -->
+                        </tbody>
+                    </table>
+                 </div>
+            </div>
+
+            <div class="flex gap-4 mt-4 flex-shrink-0">
+                <button id="btn-cancel-import" class="w-full btn-secondary">Cancelar</button>
+                <button id="btn-load-for-edit" class="w-full btn-primary">
+                    <span class="btn-text">Carregar para Edição</span>
+                </button>
+                <button id="btn-save-import" class="w-full btn-primary bg-green-600 hover:bg-green-700 hidden flex justify-center items-center">
+                    <span class="btn-text">Salvar Importação</span>
+                    <span class="loader hidden ml-2"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Importação de Ficha Técnica -->
+    <div id="import-recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-2xl transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Importador Inteligente de Ficha Técnica</h3>
+                <button id="btn-close-recipe-modal" class="text-secondary hover:text-primary">&times;</button>
+            </div>
+            <div class="text-sm bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800 mb-4">
+                <p class="font-semibold">Instruções:</p>
+                <p>Copie toda a sua ficha técnica da sua planilha (nome, lista de ingredientes, modo de preparo) e cole no campo abaixo. A IA irá ler, interpretar e preencher a ficha para si.</p>
+            </div>
+            <textarea id="import-recipe-textarea" rows="10" class="w-full form-input" placeholder="Cole a sua ficha técnica completa aqui..."></textarea>
+            <div class="flex gap-4 mt-4">
+                <button id="btn-cancel-recipe-import" class="w-full btn-secondary">Cancelar</button>
+                <button id="btn-process-recipe-import" class="w-full btn-primary bg-purple-600 hover:bg-purple-700 flex justify-center items-center">
+                    <span class="btn-text">✨ Analisar Ficha com IA</span>
+                    <span class="loader hidden ml-2"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Variáveis Globais ---
+        // --- FIREBASE SETUP ---
         let db, auth, restaurantId;
-        let ingredientes = [];
-        let produtosVendaDireta = [];
-        let receitasSalvas = [];
-        let fichaAtual = { id: null, header: {}, componentes: [] };
-        let historicoPrecos = [];
-        let ingredientCategories = [];
-        let dishCategories = [];
-        let baseRecipeCategories = [];
-        let directSaleCategories = [];
-        let recognition;
 
-        // --- Configuração do Firebase ---
+        // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
             authDomain: "cmv-ia.firebaseapp.com",
@@ -620,60 +695,6 @@
             measurementId: "G-V0R45F3XS5"
         };
         
-        // --- Funções Principais ---
-        function getCollectionPath(collectionName) {
-            return `restaurants/${restaurantId}/${collectionName}`;
-        }
-
-        async function saveCategories() {
-            if (!restaurantId) return;
-            const categoriesData = {
-                ingredientCategories,
-                dishCategories,
-                baseRecipeCategories,
-                directSaleCategories
-            };
-            await setDoc(doc(db, getCollectionPath('categories'), 'main'), categoriesData);
-        }
-
-        function setupRealtimeListeners() {
-            // Listener para Categorias
-            onSnapshot(doc(db, getCollectionPath('categories'), 'main'), (doc) => {
-                if (doc.exists()) {
-                    const data = doc.data();
-                    ingredientCategories = data.ingredientCategories || [];
-                    dishCategories = data.dishCategories || [];
-                    baseRecipeCategories = data.baseRecipeCategories || [];
-                    directSaleCategories = data.directSaleCategories || [];
-                }
-                renderAllCategoryLists();
-            });
-
-            // Listener para Ingredientes
-            onSnapshot(query(collection(db, getCollectionPath('ingredients'))), (snapshot) => {
-                ingredientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderizarIngredientes(document.getElementById('search-ingrediente').value, document.getElementById('filter-ingrediente-categoria').value);
-            });
-
-            // Listener para Produtos de Venda Direta
-            onSnapshot(query(collection(db, getCollectionPath('direct_sale_products'))), (snapshot) => {
-                produtosVendaDireta = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderizarProdutosVendaDireta();
-            });
-
-            // Listener para Receitas/Fichas
-            onSnapshot(query(collection(db, getCollectionPath('recipes'))), (snapshot) => {
-                receitasSalvas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const activeViewEl = document.querySelector('.view.active');
-                if(activeViewEl) {
-                    const activeView = activeViewEl.id.replace('-view', '');
-                    if (['consultar', 'precos', 'margem'].includes(activeView)) {
-                        showView(activeView);
-                    }
-                }
-            });
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
             if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
                 document.body.innerHTML = `
@@ -686,8 +707,19 @@
                 `;
                 return;
             }
+
+            // --- BANCO DE DADOS E LÓGICA PRINCIPAL ---
+            let ingredientes = [];
+            let produtosVendaDireta = [];
+            let receitasSalvas = [];
+            let fichaAtual = { id: null, header: {}, componentes: [] };
+            let historicoPrecos = [];
+            let ingredientCategories = [];
+            let dishCategories = [];
+            let baseRecipeCategories = [];
+            let directSaleCategories = [];
             
-            // --- LÓGICA DE NAVEGAÇÃO E TEMA ---
+            // --- SELETORES DE ELEMENTOS ---
             const appContainer = document.getElementById('app-container');
             const authView = document.getElementById('auth-view');
             const sidebar = document.getElementById('sidebar');
@@ -698,69 +730,6 @@
             const headerSubtitle = document.getElementById('header-subtitle');
             const themeToggle = document.getElementById('theme-toggle');
             const micToggle = document.getElementById('mic-toggle');
-            const subtitleMap = {
-                dashboard: 'Dashboard',
-                settings: 'Configurações',
-                ingredientes: 'Banco de Ingredientes',
-                'venda-direta': 'Produtos de Venda Direta',
-                fichas: 'Ficha Técnica Gerencial',
-                consultar: 'Consultar Fichas Salvas',
-                analise: 'Análise de Custos',
-                margem: 'Relatório de Margens',
-                precos: 'Lista de Preços de Venda',
-                vendas: 'Análise de Vendas e CMV'
-            };
-            
-            function toggleSidebar() {
-                sidebar.classList.toggle('-translate-x-full');
-                sidebarOverlay.classList.toggle('hidden');
-            }
-
-            hamburgerBtn.addEventListener('click', toggleSidebar);
-            sidebarOverlay.addEventListener('click', toggleSidebar);
-            
-            function showView(viewId) {
-                views.forEach(view => view.classList.remove('active'));
-                const activeView = document.getElementById(viewId + '-view');
-                if (activeView) {
-                    activeView.classList.add('active');
-                    headerSubtitle.textContent = subtitleMap[viewId] || 'Dashboard';
-                    
-                    navItems.forEach(nav => {
-                        if (nav.dataset.view === viewId) {
-                            nav.classList.add('bg-blue-50', 'text-blue-600', 'font-semibold');
-                        } else {
-                            nav.classList.remove('bg-blue-50', 'text-blue-600', 'font-semibold');
-                        }
-                    });
-
-                    if (window.innerWidth < 768) { // md breakpoint
-                        if(!sidebar.classList.contains('-translate-x-full')) {
-                        toggleSidebar();
-                        }
-                    }
-
-                    if (viewId === 'consultar') renderizarFichasParaConsulta();
-                    if (viewId === 'analise') renderizarAnaliseDeCustos();
-                    if (viewId === 'margem') renderizarRelatorioMargem();
-                    if (viewId === 'precos') renderizarListaDePrecos();
-                    if (viewId === 'ingredientes') populateIngredientCategoryDropdowns();
-                    if (viewId === 'venda-direta') populateDirectSaleCategoryDropdown();
-                    if (viewId === 'fichas') populateDishCategoryDropdown();
-                }
-            }
-            
-            navItems.forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const viewName = item.dataset.view;
-                    if(viewName === 'fichas') limparFicha();
-                    showView(viewName);
-                });
-            });
-            document.querySelector('button[data-view="settings"]').addEventListener('click', () => showView('settings'));
-
-            // --- SELETORES DE ELEMENTOS ---
             const formIngrediente = document.getElementById('form-ingrediente');
             const listaIngredientesDiv = document.getElementById('lista-ingredientes');
             const formFichaHeader = document.getElementById('form-ficha-header');
@@ -804,7 +773,6 @@
             const desempenhoCmvContainer = document.getElementById('desempenho-cmv-container');
             const engenhariaCardapioContainer = document.getElementById('engenharia-cardapio-container');
             const curvaAbcContainer = document.getElementById('curva-abc-container');
-            // Novos seletores para categorias
             const formCatIngrediente = document.getElementById('form-cat-ingrediente');
             const formCatPrato = document.getElementById('form-cat-prato');
             const formCatBase = document.getElementById('form-cat-base');
@@ -817,11 +785,161 @@
             const categoriaProdutoSelect = document.getElementById('categoria-produto');
             const searchIngredienteInput = document.getElementById('search-ingrediente');
             const filterIngredienteCategoriaSelect = document.getElementById('filter-ingrediente-categoria');
-            // Novos seletores para Venda Direta
             const formProdutoVenda = document.getElementById('form-produto-venda');
             const listaProdutosVendaDiv = document.getElementById('lista-produtos-venda');
             const categoriaProdutoVendaSelect = document.getElementById('categoria-produto-venda');
+            // Seletores do Modal de Importação de Ingredientes
+            const importModal = document.getElementById('import-modal');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+            const btnCancelImport = document.getElementById('btn-cancel-import');
+            const importTextarea = document.getElementById('import-textarea');
+            const btnLoadForEdit = document.getElementById('btn-load-for-edit');
+            const btnSaveImport = document.getElementById('btn-save-import');
+            const importStep1 = document.getElementById('import-step-1');
+            const importStep2 = document.getElementById('import-step-2');
+            const importEditTableBody = document.getElementById('import-edit-table-body');
+            // Seletores do Modal de Importação de Ficha
+            const btnImportarFicha = document.getElementById('btn-importar-ficha');
+            const importRecipeModal = document.getElementById('import-recipe-modal');
+            const btnCloseRecipeModal = document.getElementById('btn-close-recipe-modal');
+            const btnCancelRecipeImport = document.getElementById('btn-cancel-recipe-import');
+            const importRecipeTextarea = document.getElementById('import-recipe-textarea');
+            const btnProcessRecipeImport = document.getElementById('btn-process-recipe-import');
 
+
+            // --- FUNÇÕES DE SETUP DO FIREBASE (MOVENDO PARA DENTRO DO DOMCONTENTLOADED) ---
+            function getCollectionPath(collectionName) {
+                if (!restaurantId) return null;
+                return `/restaurants/${restaurantId}/${collectionName}`;
+            }
+
+            async function saveCategories() {
+                const path = getCollectionPath('categories');
+                if (!path) return;
+                const categoriesData = {
+                    ingredientCategories,
+                    dishCategories,
+                    baseRecipeCategories,
+                    directSaleCategories
+                };
+                await setDoc(doc(db, path, 'main'), categoriesData);
+            }
+
+            function setupRealtimeListeners() {
+                if (!restaurantId) return;
+
+                // Listener para Categorias
+                onSnapshot(doc(db, getCollectionPath('categories'), 'main'), (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        ingredientCategories = data.ingredientCategories || [];
+                        dishCategories = data.dishCategories || [];
+                        baseRecipeCategories = data.baseRecipeCategories || [];
+                        directSaleCategories = data.directSaleCategories || [];
+                    }
+                    renderAllCategoryLists();
+                });
+
+                // Listener para Ingredientes
+                onSnapshot(query(collection(db, getCollectionPath('ingredients'))), (snapshot) => {
+                    ingredientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderizarIngredientes(searchIngredienteInput.value, filterIngredienteCategoriaSelect.value);
+                });
+
+                // Listener para Produtos de Venda Direta
+                onSnapshot(query(collection(db, getCollectionPath('direct_sale_products'))), (snapshot) => {
+                    produtosVendaDireta = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderizarProdutosVendaDireta();
+                });
+
+                // Listener para Receitas/Fichas
+                onSnapshot(query(collection(db, getCollectionPath('recipes'))), (snapshot) => {
+                    receitasSalvas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const activeViewEl = document.querySelector('.view.active');
+                    if (activeViewEl) {
+                        const activeView = activeViewEl.id.replace('-view', '');
+                        if (['consultar', 'precos', 'margem', 'analise'].includes(activeView)) {
+                            showView(activeView);
+                        }
+                    }
+                });
+                
+                // Listener para Histórico de Preços
+                onSnapshot(query(collection(db, getCollectionPath('price_history'))), (snapshot) => {
+                    historicoPrecos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const activeViewEl = document.querySelector('.view.active');
+                    if (activeViewEl && activeViewEl.id === 'analise-view') {
+                        renderizarAnaliseDeCustos(searchAnaliseInput.value, filterAnaliseSelect.value);
+                    }
+                });
+            }
+            
+            // --- LÓGICA DE NAVEGAÇÃO E TEMA ---
+            const subtitleMap = {
+                dashboard: 'Dashboard',
+                settings: 'Configurações',
+                ingredientes: 'Banco de Ingredientes',
+                'venda-direta': 'Produtos de Venda Direta',
+                fichas: 'Ficha Técnica Gerencial',
+                consultar: 'Consultar Fichas Salvas',
+                analise: 'Análise de Custos',
+                margem: 'Relatório de Margens',
+                precos: 'Lista de Preços de Venda',
+                vendas: 'Análise de Vendas e CMV'
+            };
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            }
+
+            hamburgerBtn.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+            
+            function showView(viewId) {
+                views.forEach(view => view.classList.remove('active'));
+                const activeView = document.getElementById(viewId + '-view');
+                if (activeView) {
+                    activeView.classList.add('active');
+                    headerSubtitle.textContent = subtitleMap[viewId] || 'Dashboard';
+                    
+                    navItems.forEach(nav => {
+                        if (nav.dataset.view === viewId) {
+                            nav.classList.add('bg-blue-50', 'text-blue-600', 'font-semibold');
+                        } else {
+                            nav.classList.remove('bg-blue-50', 'text-blue-600', 'font-semibold');
+                        }
+                    });
+
+                    if (window.innerWidth < 768) { // md breakpoint
+                        if(!sidebar.classList.contains('-translate-x-full')) {
+                        toggleSidebar();
+                        }
+                    }
+
+                    // Refresh data on view change
+                    if (viewId === 'consultar') renderizarFichasParaConsulta();
+                    if (viewId === 'analise') renderizarAnaliseDeCustos();
+                    if (viewId === 'margem') renderizarRelatorioMargem();
+                    if (viewId === 'precos') renderizarListaDePrecos();
+                    if (viewId === 'ingredientes') populateIngredientCategoryDropdowns();
+                    if (viewId === 'venda-direta') populateDirectSaleCategoryDropdown();
+                    if (viewId === 'fichas') {
+                        populateDishCategoryDropdown();
+                        popularDropdownItens();
+                    }
+                }
+            }
+            
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const viewName = item.dataset.view;
+                    if(viewName === 'fichas') limparFicha();
+                    showView(viewName);
+                });
+            });
+            document.querySelector('button[data-view="settings"]').addEventListener('click', () => showView('settings'));
 
             // --- FUNÇÕES DE CATEGORIA ---
             function renderCategoryList(list, container, colorClass, type) {
@@ -853,6 +971,9 @@
                 renderCategoryList(directSaleCategories, listaCatVenda, 'orange', 'directSale');
                 renderCategoryList(dishCategories, listaCatPratos, 'green', 'dish');
                 renderCategoryList(baseRecipeCategories, listaCatBases, 'purple', 'base');
+                populateIngredientCategoryDropdowns();
+                populateDirectSaleCategoryDropdown();
+                populateDishCategoryDropdown();
             }
 
             async function addCategory(event, categoryArray, inputId) {
@@ -895,22 +1016,24 @@
             async function editCategory(oldName, type) {
                 let categoryArray;
                 let itemsToUpdate = [];
-                let categoryField = 'category';
-
+                let collectionName;
+                
                 if (type === 'ingredient') {
                     categoryArray = ingredientCategories;
-                    itemsToUpdate = ingredientes;
+                    itemsToUpdate = ingredientes.filter(i => i.category === oldName);
+                    collectionName = 'ingredients';
                 } else if (type === 'dish') {
                     categoryArray = dishCategories;
-                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'prato');
-                    categoryField = 'header.categoria';
+                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'prato' && r.header.categoria === oldName);
+                    collectionName = 'recipes';
                 } else if (type === 'base') {
                     categoryArray = baseRecipeCategories;
-                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'base');
-                    categoryField = 'header.categoria';
+                    itemsToUpdate = receitasSalvas.filter(r => r.type === 'base' && r.header.categoria === oldName);
+                    collectionName = 'recipes';
                 } else if (type === 'directSale') {
                     categoryArray = directSaleCategories;
-                    itemsToUpdate = produtosVendaDireta;
+                    itemsToUpdate = produtosVendaDireta.filter(p => p.category === oldName);
+                    collectionName = 'direct_sale_products';
                 }
 
                 const newName = prompt(`Editar categoria "${oldName}":`, oldName)?.trim().toUpperCase();
@@ -921,21 +1044,12 @@
                         categoryArray[index] = newName;
                         categoryArray.sort();
 
-                        // Update items using this category
                         const updatePromises = itemsToUpdate.map(item => {
-                            if (type === 'ingredient' && item.category === oldName) {
-                                item.category = newName;
-                                return setDoc(doc(db, getCollectionPath('ingredients'), item.id), item);
-                            } else if (type === 'directSale' && item.category === oldName) {
-                                item.category = newName;
-                                return setDoc(doc(db, getCollectionPath('direct_sale_products'), item.id), item);
-                            } else if ((type === 'dish' || type === 'base') && item.header.categoria === oldName) {
-                                item.header.categoria = newName;
-                                return setDoc(doc(db, getCollectionPath('recipes'), item.id), item);
-                            }
-                            return Promise.resolve();
+                            const itemRef = doc(db, getCollectionPath(collectionName), item.id);
+                            const fieldToUpdate = (type === 'dish' || type === 'base') ? 'header.categoria' : 'category';
+                            return updateDoc(itemRef, { [fieldToUpdate]: newName });
                         });
-
+                        
                         await Promise.all(updatePromises);
                         await saveCategories();
                     }
@@ -943,7 +1057,6 @@
                     alert("Essa categoria já existe.");
                 }
             }
-
 
             function populateIngredientCategoryDropdowns() {
                 const selects = [categoriaIngredienteSelect, filterIngredienteCategoriaSelect];
@@ -958,23 +1071,33 @@
                     ingredientCategories.forEach(cat => {
                         select.innerHTML += `<option value="${cat}">${cat}</option>`;
                     });
-                    select.value = currentValue;
+                    if (ingredientCategories.includes(currentValue)) {
+                        select.value = currentValue;
+                    }
                 });
             }
 
             function populateDirectSaleCategoryDropdown() {
+                const currentValue = categoriaProdutoVendaSelect.value;
                 categoriaProdutoVendaSelect.innerHTML = '<option value="">SELECIONE...</option>';
                 directSaleCategories.forEach(cat => {
                     categoriaProdutoVendaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
+                if (directSaleCategories.includes(currentValue)) {
+                    categoriaProdutoVendaSelect.value = currentValue;
+                }
             }
 
             function populateDishCategoryDropdown() {
+                const currentValue = categoriaProdutoSelect.value;
                 categoriaProdutoSelect.innerHTML = '<option value="">SELECIONE...</option>';
+                let valueExists = false;
+
                 const pratosOptgroup = document.createElement('optgroup');
                 pratosOptgroup.label = '--- PRATOS FINAIS ---';
                 dishCategories.forEach(cat => {
                     pratosOptgroup.innerHTML += `<option value="${cat}">${cat}</option>`;
+                    if (cat === currentValue) valueExists = true;
                 });
                 categoriaProdutoSelect.appendChild(pratosOptgroup);
 
@@ -982,8 +1105,13 @@
                 basesOptgroup.label = '--- RECEITAS BASE ---';
                 baseRecipeCategories.forEach(cat => {
                     basesOptgroup.innerHTML += `<option value="${cat}">${cat}</option>`;
+                     if (cat === currentValue) valueExists = true;
                 });
                 categoriaProdutoSelect.appendChild(basesOptgroup);
+
+                if (valueExists) {
+                    categoriaProdutoSelect.value = currentValue;
+                }
             }
 
             // --- FUNÇÕES DE RENDERIZAÇÃO ---
@@ -1517,7 +1645,8 @@
                 
                 const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory };
-                const apiUrl = `/.netlify/functions/gemini-proxy`;
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -1564,7 +1693,8 @@
 
                 const prompt = `Fotografia de comida, foto realista de um delicioso prato de "${dishName}", empratado profissionalmente em um prato de cerâmica branca, com fundo de restaurante desfocado, alta qualidade, detalhado, iluminação de estúdio.`;
                 const payload = { instances: [{ prompt: prompt }], parameters: { "sampleCount": 1 } };
-                const apiUrl = `/.netlify/functions/imagen-proxy`;
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -1593,6 +1723,7 @@
 
             // --- WEB SPEECH API ---
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recognition;
             if (SpeechRecognition) {
                 recognition = new SpeechRecognition();
                 recognition.continuous = true;
@@ -1862,8 +1993,136 @@
             inputMarkupPrato.addEventListener('input', calcularCustosFinais);
             rendimentoReceitaKgInput.addEventListener('input', calcularCustosFinais);
             tamanhoPorcaoGInput.addEventListener('input', calcularCustosFinais);
-            btnImportarIngredientes.addEventListener('click', () => alert('Funcionalidade de importação em desenvolvimento!'));
+            
+            // --- LÓGICA DE IMPORTAÇÃO DE INGREDIENTES ---
+            btnImportarIngredientes.addEventListener('click', () => {
+                importModal.classList.remove('hidden');
+                importModal.classList.add('flex');
+                importStep1.classList.remove('hidden');
+                importStep2.classList.add('hidden');
+                btnLoadForEdit.classList.remove('hidden');
+                btnSaveImport.classList.add('hidden');
+                importTextarea.value = '';
+                importEditTableBody.innerHTML = '';
+            });
 
+            const closeModal = () => {
+                importModal.classList.add('hidden');
+                importModal.classList.remove('flex');
+            };
+
+            btnCloseModal.addEventListener('click', closeModal);
+            btnCancelImport.addEventListener('click', closeModal);
+
+            btnLoadForEdit.addEventListener('click', () => {
+                const data = importTextarea.value.trim();
+                const lines = data.split('\n');
+                importEditTableBody.innerHTML = '';
+                let hasContent = false;
+
+                lines.forEach((line, index) => {
+                    if (line.trim() === '') return;
+                    const parts = line.split('\t');
+                    
+                    let nome = '', preco = '', qtd = '', unidade = '', categoria = '';
+
+                    if (parts.length >= 5) { // Formato completo
+                        [nome, preco, qtd, unidade, categoria] = parts;
+                    } else if (parts.length >= 3) { // Formato básico
+                        [nome, unidade, categoria] = parts;
+                    } else if (parts.length >= 1 && parts[0].trim() !== '') { // Formato mínimo
+                        [nome] = parts;
+                    }
+                    else {
+                        return; // Ignora linhas mal formatadas
+                    }
+                    
+                    hasContent = true;
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+                    tr.innerHTML = `
+                        <td class="px-2 py-1"><input type="text" value="${nome.trim().toUpperCase()}" class="form-input text-sm p-1 import-nome"></td>
+                        <td class="px-2 py-1"><input type="number" step="0.01" value="${preco.trim().replace(',', '.')}" placeholder="0.00" class="form-input text-sm p-1 import-preco"></td>
+                        <td class="px-2 py-1"><input type="number" step="0.001" value="${qtd.trim().replace(',', '.')}" placeholder="0.000" class="form-input text-sm p-1 import-qtd"></td>
+                        <td class="px-2 py-1"><input type="text" value="${unidade.trim()}" class="form-input text-sm p-1 import-unidade"></td>
+                        <td class="px-2 py-1"><input type="text" value="${categoria.trim().toUpperCase()}" class="form-input text-sm p-1 import-categoria"></td>
+                    `;
+                    importEditTableBody.appendChild(tr);
+                });
+
+                if (hasContent) {
+                    importStep1.classList.add('hidden');
+                    importStep2.classList.remove('hidden');
+                    btnLoadForEdit.classList.add('hidden');
+                    btnSaveImport.classList.remove('hidden');
+                } else {
+                    alert('Nenhum dado válido encontrado. Verifique o formato e tente novamente.');
+                }
+            });
+
+            btnSaveImport.addEventListener('click', async () => {
+                const button = btnSaveImport;
+                const btnText = button.querySelector('.btn-text');
+                const loader = button.querySelector('.loader');
+
+                btnText.classList.add('hidden');
+                loader.classList.remove('hidden');
+                button.disabled = true;
+
+                const rows = importEditTableBody.querySelectorAll('tr');
+                const promises = [];
+                let successCount = 0;
+                let errorCount = 0;
+
+                rows.forEach(row => {
+                    try {
+                        const nome = row.querySelector('.import-nome').value;
+                        const precoCompra = parseFloat(row.querySelector('.import-preco').value);
+                        const unidadeCompraQtd = parseFloat(row.querySelector('.import-qtd').value);
+                        const unidadeBase = row.querySelector('.import-unidade').value;
+                        const category = row.querySelector('.import-categoria').value;
+
+                        if (!nome || isNaN(precoCompra) || isNaN(unidadeCompraQtd) || unidadeCompraQtd <= 0 || !unidadeBase || !category) {
+                            errorCount++;
+                            console.error("Linha com dados inválidos/incompletos:", {nome, precoCompra, unidadeCompraQtd, unidadeBase, category});
+                            return;
+                        }
+
+                        const newIngredient = {
+                            nome,
+                            precoCompra,
+                            unidadeCompraQtd,
+                            unidadeBase,
+                            category,
+                            unidadeCompraDesc: 'EMBALAGEM',
+                            rendimento: 100,
+                            custoBase: precoCompra / unidadeCompraQtd
+                        };
+
+                        promises.push(addDoc(collection(db, getCollectionPath('ingredients')), newIngredient));
+                        successCount++;
+
+                    } catch (e) {
+                        errorCount++;
+                        console.error('Erro ao processar linha da tabela de importação', e);
+                    }
+                });
+
+                try {
+                    await Promise.all(promises);
+                    alert(`${successCount} ingredientes importados com sucesso! ${errorCount > 0 ? `\n${errorCount} linhas continham erros e foram ignoradas.` : ''}`);
+                    closeModal();
+                } catch (error) {
+                    console.error("Erro ao salvar ingredientes no Firebase:", error);
+                    alert("Ocorreu um erro ao salvar os dados. Verifique a consola para mais detalhes.");
+                } finally {
+                    btnText.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                    button.disabled = false;
+                }
+            });
+
+            // --- LÓGICA DE ATUALIZAÇÃO DE PREÇOS ---
             btnAbrirAtualizarPrecos.addEventListener('click', () => {
                 formAtualizarPrecos.innerHTML = '';
                 ingredientes.forEach(ing => {
@@ -1883,9 +2142,65 @@
             });
 
             btnSalvarNovosPrecos.addEventListener('click', async () => {
-                // This function needs to be updated to save to Firestore
-                alert('Funcionalidade de atualização de preços em lote em desenvolvimento para Firestore.');
-                painelAtualizarPrecos.classList.add('hidden');
+                const button = btnSalvarNovosPrecos;
+                const btnText = button.querySelector('.btn-text');
+                const loader = button.querySelector('.loader');
+                btnText.classList.add('hidden');
+                loader.classList.remove('hidden');
+                button.disabled = true;
+
+                try {
+                    const recipeCostsBeforeUpdate = receitasSalvas.map(recipe => ({
+                        id: recipe.id,
+                        header: { descricaoProduto: recipe.header.descricaoProduto },
+                        type: recipe.type,
+                        custoTotal: recalcularCustoFicha(recipe, ingredientes)
+                    }));
+
+                    const historyEntry = {
+                        date: new Date().toISOString(),
+                        recipeCosts: recipeCostsBeforeUpdate
+                    };
+
+                    const inputs = formAtualizarPrecos.querySelectorAll('input[type="number"]');
+                    const updatePromises = [];
+
+                    inputs.forEach(input => {
+                        const ingredientId = input.dataset.id;
+                        const newPrice = parseFloat(input.value);
+                        const ingredient = ingredientes.find(ing => ing.id === ingredientId);
+
+                        if (ingredient && !isNaN(newPrice) && newPrice > 0 && newPrice !== ingredient.precoCompra) {
+                            const newCustoBase = newPrice / ingredient.unidadeCompraQtd;
+                            const ingredientRef = doc(db, getCollectionPath('ingredients'), ingredientId);
+                            updatePromises.push(updateDoc(ingredientRef, {
+                                precoCompra: newPrice,
+                                custoBase: newCustoBase
+                            }));
+                        }
+                    });
+
+                    if (updatePromises.length > 0 && recipeCostsBeforeUpdate.length > 0) {
+                        updatePromises.push(addDoc(collection(db, getCollectionPath('price_history')), historyEntry));
+                    }
+
+                    if (updatePromises.length > 0) {
+                        await Promise.all(updatePromises);
+                        alert('Preços e histórico de custos atualizados com sucesso!');
+                    } else {
+                        alert('Nenhum preço foi alterado.');
+                    }
+                    
+                    painelAtualizarPrecos.classList.add('hidden');
+
+                } catch (error) {
+                    console.error("Erro ao atualizar preços:", error);
+                    alert(`Falha ao atualizar preços: ${error.message}`);
+                } finally {
+                    btnText.classList.remove('hidden');
+                    loader.classList.add('hidden');
+                    button.disabled = false;
+                }
             });
             
             let isRecognizing = false;
@@ -2136,6 +2451,19 @@
                 document.body.innerHTML = `<div class="text-center p-8 text-red-500">Falha ao conectar com a base de dados: ${error.message}</div>`;
             }
         });
+    </script>
+    
+    <!-- Script para registrar o Service Worker do PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('ServiceWorker registrado com sucesso: ', registration.scope);
+          }, err => {
+            console.log('Falha ao registrar o ServiceWorker: ', err);
+          });
+        });
+      }
     </script>
 
 </body>
