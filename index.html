@@ -1646,7 +1646,7 @@
                 const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory };
                 const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -2173,7 +2173,7 @@
                     }
                 };
                 const apiKey = ""; // Será preenchido pelo ambiente
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -2242,6 +2242,7 @@
                         alert(finalMessage);
 
                     } else {
+                        console.error("Resposta da API Gemini não continha o texto esperado:", result);
                         throw new Error("Resposta da API inválida ou vazia.");
                     }
                 } catch (error) {
