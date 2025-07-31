@@ -1489,7 +1489,7 @@
                 custoPorPorcaoSpan.textContent = `R$ ${custoPorPorcao.toFixed(2)}`;
                 
                 const markup = parseFloat(inputMarkupPrato.value) || 0;
-                const precoSugerido = custoPorPorcao * markup;
+                const precoSugerido = custoPorcao * markup;
                 precoSugeridoSpan.textContent = `R$ ${precoSugerido.toFixed(2)}`;
             }
             
