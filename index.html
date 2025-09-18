@@ -440,13 +440,11 @@
                                     <div class="mt-1 flex items-center gap-4">
                                         <img id="foto-preview" src="https://placehold.co/100x100/e0e7ff/4338ca?text=Foto" class="w-24 h-24 object-cover rounded-lg bg-gray-100">
                                         <div class="flex flex-col gap-2">
-                                            <button type="button" id="btn-carregar-foto" class="text-sm btn-secondary">Carregar Foto</button>
-                                            <button type="button" id="btn-gerar-foto-ia" class="text-sm bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2">
-                                                <span class="loader hidden"></span>
-                                                <span>✨ Gerar Foto com IA</span>
-                                            </button>
+                                            <button type="button" id="btn-carregar-foto" class="text-sm btn-secondary">Carregar do Dispositivo</button>
+                                            <p class="text-xs text-secondary">Prefira imagens otimizadas (&lt;1MB).</p>
                                         </div>
                                     </div>
+                                    <input type="file" id="input-foto" class="hidden" accept="image/*">
                                     <input type="hidden" id="foto-url">
                                 </div>
                             </div>
@@ -599,6 +597,34 @@
         </div>
     </div>
     
+    <!-- Modal de Edição de Ingrediente -->
+    <div id="edit-ingredient-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-lg transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold">Editar Ingrediente</h3>
+                <button id="btn-close-edit-modal" class="text-secondary hover:text-primary">&times;</button>
+            </div>
+            <form id="form-edit-ingrediente" class="space-y-4">
+                <input type="hidden" id="edit-ingrediente-id">
+                <div><label for="edit-nome-ingrediente" class="block text-sm font-medium text-secondary">Nome</label><input type="text" id="edit-nome-ingrediente" required class="mt-1 form-input"></div>
+                <div><label for="edit-categoria-ingrediente" class="block text-sm font-medium text-secondary">Categoria</label><select id="edit-categoria-ingrediente" required class="mt-1 form-select"></select></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label for="edit-preco-compra" class="block text-sm font-medium text-secondary">Preço Compra (R$)</label><input type="number" step="0.01" id="edit-preco-compra" required class="mt-1 form-input"></div>
+                    <div><label for="edit-unidade-compra-desc" class="block text-sm font-medium text-secondary">Embalagem</label><input type="text" id="edit-unidade-compra-desc" required class="mt-1 form-input"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label for="edit-unidade-compra-qtd" class="block text-sm font-medium text-secondary">Volume</label><input type="number" step="0.001" id="edit-unidade-compra-qtd" required class="mt-1 form-input"></div>
+                    <div><label for="edit-unidade-base" class="block text-sm font-medium text-secondary">Un. Base</label><input type="text" id="edit-unidade-base" required class="mt-1 form-input"></div>
+                    <div><label for="edit-rendimento-ingrediente" class="block text-sm font-medium text-secondary">Rend. (%)</label><input type="number" step="1" id="edit-rendimento-ingrediente" required class="mt-1 form-input"></div>
+                </div>
+                <div class="flex gap-4 mt-6">
+                     <button type="button" id="btn-delete-ingrediente" class="w-full btn-secondary bg-red-600 hover:bg-red-700 text-white">Excluir</button>
+                     <button type="submit" class="w-full btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal de Importação de Ingredientes -->
     <div id="import-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden items-center justify-center p-4">
         <div class="card p-6 w-full max-w-4xl transform transition-all flex flex-col max-h-[90vh]">
@@ -805,6 +831,13 @@
             const btnCancelRecipeImport = document.getElementById('btn-cancel-recipe-import');
             const importRecipeTextarea = document.getElementById('import-recipe-textarea');
             const btnProcessRecipeImport = document.getElementById('btn-process-recipe-import');
+            // Novos seletores para edição de ingredientes
+            const editIngredientModal = document.getElementById('edit-ingredient-modal');
+            const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
+            const formEditIngrediente = document.getElementById('form-edit-ingrediente');
+            const btnDeleteIngrediente = document.getElementById('btn-delete-ingrediente');
+            // Novo seletor para upload de foto
+            const inputFileFoto = document.getElementById('input-foto');
 
 
             // --- FUNÇÕES DE SETUP DO FIREBASE (MOVENDO PARA DENTRO DO DOMCONTENTLOADED) ---
@@ -1144,7 +1177,8 @@
                     
                     grouped[category].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(ing => {
                         const li = document.createElement('li');
-                        li.className = 'bg-form-bg p-3 rounded-lg flex justify-between items-center border border-border-color';
+                        li.className = 'bg-form-bg p-3 rounded-lg flex justify-between items-center border border-border-color cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors';
+                        li.dataset.id = ing.id;
                         li.innerHTML = `
                             <div>
                                 <span class="font-semibold">${ing.nome}</span>
@@ -1676,51 +1710,6 @@
                 }
             }
 
-            async function callImagenForPhoto() {
-                const button = btnGerarFotoIA;
-                const loader = button.querySelector('.loader');
-                const buttonText = button.querySelector('span:last-child');
-                const dishName = document.getElementById('descricao-produto').value;
-
-                if (!dishName) {
-                    alert("Por favor, insira uma descrição para o prato antes de gerar a imagem.");
-                    return;
-                }
-                
-                loader.classList.remove('hidden');
-                buttonText.textContent = 'Gerando...';
-                button.disabled = true;
-
-                const prompt = `Fotografia de comida, foto realista de um delicioso prato de "${dishName}", empratado profissionalmente em um prato de cerâmica branca, com fundo de restaurante desfocado, alta qualidade, detalhado, iluminação de estúdio.`;
-                const payload = { instances: [{ prompt: prompt }], parameters: { "sampleCount": 1 } };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await response.json();
-
-                    if (result.predictions && result.predictions[0].bytesBase64Encoded) {
-                        const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
-                        fotoPreview.src = imageUrl;
-                        fotoUrlInput.value = imageUrl;
-                    } else {
-                        throw new Error("Resposta da API de imagem inválida.");
-                    }
-                } catch (error) {
-                    console.error("Erro ao chamar a API Imagen:", error);
-                    alert("Ocorreu um erro ao gerar a imagem. Tente novamente.");
-                } finally {
-                    loader.classList.add('hidden');
-                    buttonText.textContent = '✨ Gerar Foto com IA';
-                    button.disabled = false;
-                }
-            }
-
             // --- WEB SPEECH API ---
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             let recognition;
@@ -1946,46 +1935,36 @@
                     fatorCorrecaoOverrideInput.value = '';
                     fatorCorrecaoOverrideInput.placeholder = 'N/A';
                     fatorCorrecaoOverrideInput.disabled = true;
-                }
-            });
-            
-            formReceita.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const selectedValue = form['select-item'].value;
-                const qtdeLiquida = parseFloat(form['quantidade-receita'].value);
-                if (!selectedValue || !qtdeLiquida || qtdeLiquida <= 0) return;
-
-                const [type, id] = selectedValue.split('_');
-                let itemParaFicha;
-                
-                if (type === 'ing') {
-                    const ing = ingredientes.find(i => i.id == id);
-                    const fatorCorrecao = parseFloat(fatorCorrecaoOverrideInput.value);
-                    const qtdeBruta = qtdeLiquida * fatorCorrecao;
-                    itemParaFicha = { type: 'ing', nome: ing.nome, unidade: ing.unidadeBase, qtdeLiquida, fatorCorrecao, qtdeBruta, custoUnitario: ing.custoBase, custoTotal: qtdeBruta * ing.custoBase };
-                } else if (type === 'rec') {
-                    const rec = receitasSalvas.find(r => r.id == id);
-                    const custoUnitarioRec = rec.custoTotal / (rec.header.rendimentoReceitaKg || 1);
-                    itemParaFicha = { type: 'rec', nome: rec.header.descricaoProduto, unidade: 'kg', qtdeLiquida, fatorCorrecao: 1.0, qtdeBruta: qtdeLiquida, custoUnitario: custoUnitarioRec, custoTotal: qtdeLiquida * custoUnitarioRec };
-                }
-                fichaAtual.componentes.push(itemParaFicha);
-                renderizarFichaAtual();
-                form.reset();
-                fatorCorrecaoOverrideInput.disabled = true;
                 fatorCorrecaoOverrideInput.placeholder = 'Padrão';
             });
 
-            function simularUploadFoto() {
-                const url = prompt("Cole a URL da imagem aqui:");
-                if (url) {
-                    fotoPreview.src = url;
-                    fotoUrlInput.value = url;
+            function handlePhotoFile(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                if (!file.type.startsWith('image/')) {
+                    alert('Por favor, selecione um ficheiro de imagem.');
+                    return;
                 }
+
+                if (file.size > 1024 * 1024) { // 1MB size limit
+                    alert('A imagem é muito grande (máx 1MB). Por favor, use uma imagem menor.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    fotoPreview.src = e.target.result;
+                    fotoUrlInput.value = e.target.result;
+                };
+                reader.readAsDataURL(file);
             }
 
-            btnCarregarFoto.addEventListener('click', simularUploadFoto);
-            btnGerarFotoIA.addEventListener('click', callImagenForPhoto);
+            btnCarregarFoto.addEventListener('click', () => {
+                document.getElementById('input-foto').click();
+            });
+            document.getElementById('input-foto').addEventListener('change', handlePhotoFile);
+
             btnAssistenteReceita.addEventListener('click', callGeminiForRecipe);
             btnSalvarReceita.addEventListener('click', () => salvarFicha('base'));
             btnSalvarPrato.addEventListener('click', () => salvarFicha('prato'));
@@ -2119,6 +2098,86 @@
                     btnText.classList.remove('hidden');
                     loader.classList.add('hidden');
                     button.disabled = false;
+                }
+            });
+
+            // --- LÓGICA DE EDIÇÃO DE INGREDIENTES ---
+            function openEditIngredientModal(ingredientId) {
+                const ing = ingredientes.find(i => i.id === ingredientId);
+                if (!ing) return;
+
+                const select = document.getElementById('edit-categoria-ingrediente');
+                select.innerHTML = '';
+                ingredientCategories.forEach(cat => {
+                    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+
+                document.getElementById('edit-ingrediente-id').value = ing.id;
+                document.getElementById('edit-nome-ingrediente').value = ing.nome;
+                select.value = ing.category;
+                document.getElementById('edit-preco-compra').value = ing.precoCompra;
+                document.getElementById('edit-unidade-compra-desc').value = ing.unidadeCompraDesc;
+                document.getElementById('edit-unidade-compra-qtd').value = ing.unidadeCompraQtd;
+                document.getElementById('edit-unidade-base').value = ing.unidadeBase;
+                document.getElementById('edit-rendimento-ingrediente').value = ing.rendimento;
+                
+                btnDeleteIngrediente.textContent = 'Excluir Ingrediente';
+                btnDeleteIngrediente.dataset.confirmed = 'false';
+
+                editIngredientModal.classList.remove('hidden');
+                editIngredientModal.classList.add('flex');
+            }
+
+            function closeEditIngredientModal() {
+                editIngredientModal.classList.add('hidden');
+                editIngredientModal.classList.remove('flex');
+            }
+
+            listaIngredientesDiv.addEventListener('dblclick', (e) => {
+                const li = e.target.closest('li[data-id]');
+                if (li) {
+                    openEditIngredientModal(li.dataset.id);
+                }
+            });
+
+            btnCloseEditModal.addEventListener('click', closeEditIngredientModal);
+
+            formEditIngrediente.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = document.getElementById('edit-ingrediente-id').value;
+                const precoCompra = parseFloat(document.getElementById('edit-preco-compra').value);
+                const unidadeCompraQtd = parseFloat(document.getElementById('edit-unidade-compra-qtd').value);
+
+                const updatedIngredient = {
+                    nome: document.getElementById('edit-nome-ingrediente').value.toUpperCase(),
+                    category: document.getElementById('edit-categoria-ingrediente').value,
+                    precoCompra,
+                    unidadeCompraDesc: document.getElementById('edit-unidade-compra-desc').value,
+                    unidadeCompraQtd,
+                    unidadeBase: document.getElementById('edit-unidade-base').value,
+                    rendimento: parseFloat(document.getElementById('edit-rendimento-ingrediente').value),
+                    custoBase: precoCompra / unidadeCompraQtd
+                };
+                
+                const ingredientRef = doc(db, getCollectionPath('ingredients'), id);
+                await updateDoc(ingredientRef, updatedIngredient);
+                alert('Ingrediente atualizado com sucesso!');
+                closeEditIngredientModal();
+            });
+
+            btnDeleteIngrediente.addEventListener('click', async () => {
+                if (btnDeleteIngrediente.dataset.confirmed === 'true') {
+                    const id = document.getElementById('edit-ingrediente-id').value;
+                    await deleteDoc(doc(db, getCollectionPath('ingredients'), id));
+                    alert('Ingrediente excluído com sucesso!');
+                    closeEditIngredientModal();
+                } else {
+                    btnDeleteIngrediente.textContent = 'CONFIRMAR EXCLUSÃO?';
+                    btnDeleteIngrediente.dataset.confirmed = 'true';
+                    setTimeout(() => {
+                         btnDeleteIngrediente.textContent = 'Excluir Ingrediente';
+                         btnDeleteIngrediente.dataset.confirmed = 'false';
+                    }, 3000); 
                 }
             });
 
@@ -2616,3 +2675,4 @@
 
 </body>
 </html>
+
