@@ -775,7 +775,6 @@
             const fotoPreview = document.getElementById('foto-preview');
             const fotoUrlInput = document.getElementById('foto-url');
             const btnCarregarFoto = document.getElementById('btn-carregar-foto');
-            const btnGerarFotoIA = document.getElementById('btn-gerar-foto-ia');
             const btnAssistenteReceita = document.getElementById('btn-assistente-receita');
             const btnAbrirAtualizarPrecos = document.getElementById('btn-abrir-atualizar-precos');
             const painelAtualizarPrecos = document.getElementById('painel-atualizar-precos');
@@ -1935,6 +1934,33 @@
                     fatorCorrecaoOverrideInput.value = '';
                     fatorCorrecaoOverrideInput.placeholder = 'N/A';
                     fatorCorrecaoOverrideInput.disabled = true;
+                }
+            });
+
+            formReceita.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const selectedValue = form['select-item'].value;
+                const qtdeLiquida = parseFloat(form['quantidade-receita'].value);
+                if (!selectedValue || !qtdeLiquida || qtdeLiquida <= 0) return;
+
+                const [type, id] = selectedValue.split('_');
+                let itemParaFicha;
+                
+                if (type === 'ing') {
+                    const ing = ingredientes.find(i => i.id == id);
+                    const fatorCorrecao = parseFloat(fatorCorrecaoOverrideInput.value);
+                    const qtdeBruta = qtdeLiquida * fatorCorrecao;
+                    itemParaFicha = { type: 'ing', nome: ing.nome, unidade: ing.unidadeBase, qtdeLiquida, fatorCorrecao, qtdeBruta, custoUnitario: ing.custoBase, custoTotal: qtdeBruta * ing.custoBase };
+                } else if (type === 'rec') {
+                    const rec = receitasSalvas.find(r => r.id == id);
+                    const custoUnitarioRec = rec.custoTotal / (rec.header.rendimentoReceitaKg || 1);
+                    itemParaFicha = { type: 'rec', nome: rec.header.descricaoProduto, unidade: 'kg', qtdeLiquida, fatorCorrecao: 1.0, qtdeBruta: qtdeLiquida, custoUnitario: custoUnitarioRec, custoTotal: qtdeLiquida * custoUnitarioRec };
+                }
+                fichaAtual.componentes.push(itemParaFicha);
+                renderizarFichaAtual();
+                form.reset();
+                fatorCorrecaoOverrideInput.disabled = true;
                 fatorCorrecaoOverrideInput.placeholder = 'Padrão';
             });
 
