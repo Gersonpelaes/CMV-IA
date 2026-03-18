@@ -726,24 +726,27 @@
         // --- FIREBASE SETUP ---
         let db, auth, restaurantId;
 
-        // SUBSTITUA ISTO PELA CONFIGURAÇÃO DO SEU FIREBASE
-        const firebaseConfig = {
-            apiKey: "AIzaSyAxuTB2KsuxDi2ww8HEcqqi_tnzzPVR8Lw",
-            authDomain: "cmv-ia.firebaseapp.com",
-            projectId: "cmv-ia",
-            storageBucket: "cmv-ia.firebasestorage.app",
-            messagingSenderId: "587984899697",
-            appId: "1:587984899697:web:d268195678b0e81cb515d0",
-            measurementId: "G-V0R45F3XS5"
-        };
+        // A CONFIGURAÇÃO AGORA É BUSCADA DO BACKEND (NETLIFY FUNCTIONS)
+        let firebaseConfig = null;
         
         document.addEventListener('DOMContentLoaded', async () => {
-            if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
+            try {
+                const configResponse = await fetch('/.netlify/functions/firebase-config');
+                if (configResponse.ok) {
+                    firebaseConfig = await configResponse.json();
+                } else {
+                    console.error("Falha ao buscar a configuração do Firebase no servidor.");
+                }
+            } catch (e) {
+                console.error("Erro de rede ao buscar a configuração do Firebase:", e);
+            }
+
+            if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "YOUR_PROJECT_ID" || !firebaseConfig.apiKey) {
                 document.body.innerHTML = `
                     <div class="w-full h-screen flex items-center justify-center p-8 bg-gray-100">
                         <div class="text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                            <strong class="font-bold">Erro de Configuração!</strong>
-                            <span class="block sm:inline">A configuração do Firebase não foi encontrada. Por favor, edite o ficheiro HTML e substitua o objeto 'firebaseConfig' pelas suas credenciais do Firebase.</span>
+                            <strong class="font-bold">Erro de Configuração ou Chaves Ausentes!</strong>
+                            <span class="block sm:inline">A configuração do Firebase não foi encontrada de forma segura. Por favor, certifique-se de configurar as <b>Variáveis de Ambiente (FIREBASE_API_KEY, etc.)</b> no painel da Netlify.</span>
                         </div>
                     </div>
                 `;
@@ -1694,8 +1697,7 @@
                 
                 const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                 const payload = { contents: chatHistory };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const apiUrl = `/.netlify/functions/gemini-proxy`;
 
                 try {
                     const response = await fetch(apiUrl, {
@@ -2273,8 +2275,7 @@
                         responseMimeType: "application/json",
                     }
                 };
-                const apiKey = ""; // Será preenchido pelo ambiente
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const apiUrl = `/.netlify/functions/gemini-proxy`;
 
                 try {
                     const response = await fetch(apiUrl, {
