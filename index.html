@@ -469,7 +469,13 @@
                             <form id="form-receita" class="mb-6">
                                  <h3 class="text-xl font-semibold mb-3 text-blue-700">Adicionar Insumo</h3>
                                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                    <div class="md:col-span-2"><label for="select-item" class="block text-sm font-medium text-secondary">Ingrediente ou Receita Base</label><select id="select-item" required class="mt-1 form-select"></select></div>
+                                    <div class="md:col-span-2">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label for="select-item" class="text-sm font-medium text-secondary">Ingrediente/Receita Base</label>
+                                            <button type="button" id="btn-inline-novo-ingrediente" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"><svg class="w-3 h-3 block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg> Cadastrar Novo</button>
+                                        </div>
+                                        <select id="select-item" required class="form-select"></select>
+                                    </div>
                                     <div><label for="quantidade-receita" class="block text-sm font-medium text-secondary">Qtd. Líquida</label><input type="number" step="0.001" id="quantidade-receita" placeholder="0.300" required class="mt-1 form-input"></div>
                                     <div><label for="fator-correcao-override" class="block text-sm font-medium text-secondary">Fator Correção</label><input type="number" step="0.001" id="fator-correcao-override" placeholder="Padrão" class="mt-1 form-input" disabled></div>
                                 </div>
@@ -487,6 +493,7 @@
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Qtd. Bruta</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Custo Unit.</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">Custo Total</th>
+                                        <th class="px-4 py-3 text-center text-xs font-medium text-secondary uppercase tracking-wider">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabela-receita" class="divide-y divide-border-color"></tbody>
@@ -637,6 +644,30 @@
                      <button type="button" id="btn-delete-ingrediente" class="w-full btn-secondary bg-red-600 hover:bg-red-700 text-white">Excluir</button>
                      <button type="submit" class="w-full btn-primary">Salvar Alterações</button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Inline Cadastro de Ingrediente -->
+    <div id="inline-ingredient-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-lg transform transition-all max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-blue-800 dark:text-blue-400">Novo Insumo Rápido</h3>
+                <button type="button" id="btn-close-inline-modal" class="text-secondary hover:text-primary text-2xl" title="Fechar">&times;</button>
+            </div>
+            <form id="form-inline-ingrediente" class="space-y-4">
+                <div><label for="inline-nome-ingrediente" class="block text-sm font-medium text-secondary">Nome do Produto</label><input type="text" id="inline-nome-ingrediente" placeholder="Ex: Farinha de Trigo..." required class="mt-1 form-input uppercase"></div>
+                <div><label for="inline-categoria-ingrediente" class="block text-sm font-medium text-secondary">Categoria Padrão</label><select id="inline-categoria-ingrediente" required class="mt-1 form-select"></select></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label for="inline-preco-compra" class="block text-sm font-medium text-secondary">Preço Total Pago (R$)</label><input type="number" step="0.01" id="inline-preco-compra" placeholder="20.00" required class="mt-1 form-input"></div>
+                    <div><label for="inline-unidade-compra-desc" class="block text-sm font-medium text-secondary">Embalagem (Saco, Caixa)</label><input type="text" id="inline-unidade-compra-desc" placeholder="Ex: Saco 5kg" required class="mt-1 form-input uppercase"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label for="inline-unidade-compra-qtd" class="block text-sm font-medium text-secondary">Volume Custo</label><input type="number" step="0.001" id="inline-unidade-compra-qtd" placeholder="5" required class="mt-1 form-input"></div>
+                    <div><label for="inline-unidade-base" class="block text-sm font-medium text-secondary">Unid. Receita</label><input type="text" id="inline-unidade-base" placeholder="kg" required class="mt-1 form-input lowercase text-center"></div>
+                    <div><label for="inline-rendimento-ingrediente" class="block text-sm font-medium text-secondary">Rend. (%)</label><input type="number" step="1" id="inline-rendimento-ingrediente" value="100" min="1" max="100" required class="mt-1 form-input"></div>
+                </div>
+                <button type="submit" class="w-full btn-primary mt-4 py-3 font-semibold hover:bg-blue-700">Salvar & Inserir na Ficha ⚡</button>
             </form>
         </div>
     </div>
@@ -826,6 +857,7 @@
             const listaCatBases = document.getElementById('lista-cat-bases');
             const listaCatVenda = document.getElementById('lista-cat-venda');
             const categoriaIngredienteSelect = document.getElementById('categoria-ingrediente');
+            const inlineCategoriaIngredienteSelect = document.getElementById('inline-categoria-ingrediente');
             const categoriaProdutoSelect = document.getElementById('categoria-produto');
             const searchIngredienteInput = document.getElementById('search-ingrediente');
             const filterIngredienteCategoriaSelect = document.getElementById('filter-ingrediente-categoria');
@@ -1110,7 +1142,7 @@
             }
 
             function populateIngredientCategoryDropdowns() {
-                const selects = [categoriaIngredienteSelect, filterIngredienteCategoriaSelect];
+                const selects = [categoriaIngredienteSelect, filterIngredienteCategoriaSelect, inlineCategoriaIngredienteSelect];
                 selects.forEach(select => {
                     const currentValue = select.value;
                     select.innerHTML = ''; // Limpa
@@ -1322,7 +1354,7 @@
 
             function renderizarFichaAtual() {
                 tabelaReceitaBody.innerHTML = '';
-                fichaAtual.componentes.forEach(item => {
+                fichaAtual.componentes.forEach((item, index) => {
                     const tr = document.createElement('tr');
                     tr.className = `table-row hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${item.type === 'rec' ? 'text-purple-600 dark:text-purple-400' : ''}`;
                     tr.innerHTML = `
@@ -1332,9 +1364,50 @@
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">${item.fatorCorrecao.toFixed(3)}</td>
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">${item.qtdeBruta.toFixed(3)}</td>
                         <td class="px-4 py-2 whitespace-nowrap text-secondary">R$ ${item.custoUnitario.toFixed(2)}</td>
-                        <td class="px-4 py-2 whitespace-nowrap font-semibold text-amber-600">R$ ${item.custoTotal.toFixed(2)}</td>`;
+                        <td class="px-4 py-2 whitespace-nowrap font-semibold text-amber-600">R$ ${item.custoTotal.toFixed(2)}</td>
+                        <td class="px-4 py-2 whitespace-nowrap text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button type="button" class="btn-editar-item-ficha text-blue-500 hover:text-blue-700 p-1" data-index="${index}" title="Editar Métrica">
+                                    <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z"></path></svg>
+                                </button>
+                                <button type="button" class="btn-excluir-item-ficha text-red-500 hover:text-red-700 p-1" data-index="${index}" title="Excluir">
+                                    <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </td>`;
                     tabelaReceitaBody.appendChild(tr);
                 });
+
+                document.querySelectorAll('.btn-excluir-item-ficha').forEach(btn => btn.addEventListener('click', (e) => {
+                    const idx = e.currentTarget.dataset.index;
+                    fichaAtual.componentes.splice(idx, 1);
+                    renderizarFichaAtual();
+                }));
+                
+                document.querySelectorAll('.btn-editar-item-ficha').forEach(btn => btn.addEventListener('click', (e) => {
+                    const idx = e.currentTarget.dataset.index;
+                    const item = fichaAtual.componentes[idx];
+                    
+                    let refId = '';
+                    if (item.type === 'ing') {
+                        const ingEncontrado = ingredientes.find(i => i.nome === item.nome);
+                        if (ingEncontrado) refId = 'ing_' + ingEncontrado.id;
+                    } else {
+                        const recEncontrado = receitasSalvas.find(r => r.header.descricaoProduto === item.nome);
+                        if (recEncontrado) refId = 'rec_' + recEncontrado.id;
+                    }
+                    
+                    document.getElementById('select-item').value = refId;
+                    document.getElementById('quantidade-receita').value = item.qtdeLiquida;
+                    const fatorCorrecaoEl = document.getElementById('fator-correcao-override');
+                    fatorCorrecaoEl.value = item.fatorCorrecao;
+                    fatorCorrecaoEl.disabled = false;
+                    
+                    // Remove current line so that user can re-insert
+                    fichaAtual.componentes.splice(idx, 1);
+                    renderizarFichaAtual();
+                }));
+
                 calcularCustosFinais();
             }
 
@@ -1917,6 +1990,73 @@
                 } catch (error) {
                     console.error("Erro ao salvar ingrediente:", error);
                     alert(`Falha ao salvar ingrediente: ${error.message}`);
+                }
+            });
+
+            // --- LÓGICA DO INLINE MODAL INGREDIENTE ---
+            const btnInlineNovoIngrediente = document.getElementById('btn-inline-novo-ingrediente');
+            const inlineIngredientModal = document.getElementById('inline-ingredient-modal');
+            const btnCloseInlineModal = document.getElementById('btn-close-inline-modal');
+            const formInlineIngrediente = document.getElementById('form-inline-ingrediente');
+
+            btnInlineNovoIngrediente.addEventListener('click', () => {
+                inlineIngredientModal.classList.remove('hidden');
+                inlineIngredientModal.classList.add('flex');
+            });
+
+            btnCloseInlineModal.addEventListener('click', () => {
+                inlineIngredientModal.classList.add('hidden');
+                inlineIngredientModal.classList.remove('flex');
+            });
+
+            formInlineIngrediente.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const precoCompra = parseFloat(form['inline-preco-compra'].value);
+                const unidadeCompraQtd = parseFloat(form['inline-unidade-compra-qtd'].value);
+                const button = form.querySelector('button[type="submit"]');
+                const originalBtnText = button.textContent;
+                
+                if (!precoCompra || !unidadeCompraQtd || unidadeCompraQtd <= 0) { alert("Preço e quantidade da compra devem ser valores válidos e positivos."); return; }
+                const newIngredient = {
+                    nome: form['inline-nome-ingrediente'].value.toUpperCase(), 
+                    category: form['inline-categoria-ingrediente'].value, 
+                    precoCompra, 
+                    unidadeCompraDesc: form['inline-unidade-compra-desc'].value, 
+                    unidadeCompraQtd, 
+                    unidadeBase: form['inline-unidade-base'].value, 
+                    rendimento: parseFloat(form['inline-rendimento-ingrediente'].value), 
+                    custoBase: precoCompra / unidadeCompraQtd
+                };
+                
+                button.disabled = true;
+                button.textContent = 'Salvando...';
+
+                try {
+                    const docRef = await addDoc(collection(db, getCollectionPath('ingredients')), newIngredient);
+                    form.reset();
+                    form['inline-rendimento-ingrediente'].value = '100';
+                    inlineIngredientModal.classList.add('hidden');
+                    inlineIngredientModal.classList.remove('flex');
+                    
+                    // Tenta pré-selecionar assíncronamente após o listener onSnapshot atualizar a lista (~1s)
+                    setTimeout(() => { 
+                        const selectEl = document.getElementById('select-item');
+                        if(selectEl) selectEl.value = 'ing_' + docRef.id;
+                        
+                        const fatorCorrecaoPadrao = 1 / (newIngredient.rendimento / 100);
+                        const fatorCorrecaoOverrideInput = document.getElementById('fator-correcao-override');
+                        if(fatorCorrecaoOverrideInput) {
+                            fatorCorrecaoOverrideInput.value = fatorCorrecaoPadrao.toFixed(3);
+                            fatorCorrecaoOverrideInput.disabled = false;
+                        }
+                    }, 500);
+                } catch (error) {
+                    console.error("Erro ao salvar ingrediente rápido:", error);
+                    alert(`Falha ao salvar ingrediente rápido: ${error.message}`);
+                } finally {
+                    button.disabled = false;
+                    button.textContent = originalBtnText;
                 }
             });
 
