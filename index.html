@@ -1260,9 +1260,12 @@
 
                 Object.keys(grouped).sort().forEach(category => {
                     const categoryDiv = document.createElement('div');
-                    categoryDiv.innerHTML = `<h4 class="text-md font-semibold text-blue-700 dark:text-blue-400 mb-2 pb-1 border-b border-border-color">${category}</h4>`;
+                    categoryDiv.innerHTML = `<h4 class="text-md font-semibold text-blue-700 dark:text-blue-400 mb-2 pb-1 border-b border-border-color cursor-pointer flex justify-between items-center" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        ${category}
+                        <span class="text-xs text-secondary font-normal bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">👁️ Ocultar/Exibir</span>
+                    </h4>`;
                     const ul = document.createElement('ul');
-                    ul.className = 'space-y-2';
+                    ul.className = 'space-y-2 relative transition-all';
                     
                     grouped[category].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(ing => {
                         const li = document.createElement('li');
@@ -1303,9 +1306,12 @@
 
                 Object.keys(grouped).sort().forEach(category => {
                     const categoryDiv = document.createElement('div');
-                    categoryDiv.innerHTML = `<h4 class="text-md font-semibold text-orange-700 dark:text-orange-400 mb-2 pb-1 border-b border-border-color">${category}</h4>`;
+                    categoryDiv.innerHTML = `<h4 class="text-md font-semibold text-orange-700 dark:text-orange-400 mb-2 pb-1 border-b border-border-color cursor-pointer flex justify-between items-center" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        ${category}
+                        <span class="text-xs text-secondary font-normal bg-orange-100 dark:bg-orange-900 px-2 py-1 rounded">👁️ Ocultar/Exibir</span>
+                    </h4>`;
                     const ul = document.createElement('ul');
-                    ul.className = 'space-y-2';
+                    ul.className = 'space-y-2 relative transition-all';
                     
                     grouped[category].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(prod => {
                         const li = document.createElement('li');
@@ -1352,9 +1358,12 @@
 
                 Object.keys(groupedFichas).sort().forEach(groupName => {
                     const groupDiv = document.createElement('div');
-                    groupDiv.innerHTML = `<h4 class="text-md font-semibold text-blue-700 dark:text-blue-400 mt-4 mb-2 pb-1 border-b border-border-color">${groupName}</h4>`;
+                    groupDiv.innerHTML = `<h4 class="text-md font-semibold text-blue-700 dark:text-blue-400 mt-4 mb-2 pb-1 border-b border-border-color cursor-pointer flex justify-between items-center" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        ${groupName}
+                        <span class="text-xs text-secondary font-normal bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">👁️ Ocultar/Exibir</span>
+                    </h4>`;
                     const innerList = document.createElement('div');
-                    innerList.className = 'space-y-3';
+                    innerList.className = 'space-y-3 relative transition-all';
 
                     groupedFichas[groupName].sort((a,b) => a.header.descricaoProduto.localeCompare(b.header.descricaoProduto)).forEach(ficha => {
                         const custoPorPorcao = (ficha.custoTotal / ficha.header.rendimentoReceitaKg) * (ficha.header.tamanhoPorcaoG / 1000) || 0;
@@ -1648,10 +1657,11 @@
                     
                     html += `
                         <div class="bg-form-bg p-4 rounded-lg border border-border-color" data-category="${category}">
-                            <div class="flex flex-col sm:flex-row justify-between items-center mb-3 border-b border-border-color pb-2">
+                            <div class="flex flex-col sm:flex-row justify-between items-center mb-3 border-b border-border-color pb-2 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
                                 <h3 class="text-xl font-semibold text-blue-800 dark:text-blue-400">${category}</h3>
+                                <span class="text-xs text-secondary font-normal bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">👁️ Ocultar/Exibir</span>
                             </div>
-                            <div class="space-y-2 mt-2">
+                            <div class="space-y-2 mt-2 relative transition-all">
                     `;
 
                     pratosDaCategoria.forEach(prato => {
