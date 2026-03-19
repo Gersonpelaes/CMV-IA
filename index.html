@@ -546,8 +546,19 @@
                      <div class="card p-4 md:p-8">
                          <div class="flex justify-between items-center mb-6 border-b border-border-color pb-4">
                             <h3 class="text-2xl font-bold">Consultar Fichas Salvas</h3>
-                            <button type="button" id="btn-importar-ficha" class="btn-secondary text-sm bg-purple-600 hover:bg-purple-700 text-white">✨ Importar Ficha Técnica com IA</button>
+                            <button type="button" id="btn-importar-ficha" class="btn-secondary text-sm bg-purple-600 hover:bg-purple-700 text-white">✨ Importar Ficha com IA</button>
                         </div>
+                        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                            <input type="text" id="search-fichas" class="flex-grow form-input" placeholder="Pesquisar por nome da ficha...">
+                            <select id="filter-fichas-tipo" class="form-select">
+                                <option value="todos">Todos os Tipos</option>
+                                <option value="prato">Apenas Pratos</option>
+                                <option value="base">Apenas Bases</option>
+                            </select>
+                            <select id="filter-fichas-categoria" class="form-select">
+                                <option value="todas">Todas as Categorias</option>
+                            </select>
+                         </div>
                         <div id="lista-fichas-salvas" class="space-y-3"></div>
                     </div>
                 </div>
@@ -1001,7 +1012,13 @@
                     }
 
                     // Refresh data on view change
-                    if (viewId === 'consultar') renderizarFichasParaConsulta();
+                    if (viewId === 'consultar') {
+                        if (typeof populateFichasCategoryDropdown === 'function') populateFichasCategoryDropdown();
+                        const searchInput = document.getElementById('search-fichas')?.value || '';
+                        const filterTipo = document.getElementById('filter-fichas-tipo')?.value || 'todos';
+                        const filterCat = document.getElementById('filter-fichas-categoria')?.value || 'todas';
+                        renderizarFichasParaConsulta(searchInput, filterTipo, filterCat);
+                    }
                     if (viewId === 'analise') renderizarAnaliseDeCustos();
                     if (viewId === 'margem') renderizarRelatorioMargem();
                     if (viewId === 'precos') renderizarListaDePrecos();
@@ -1049,6 +1066,18 @@
                 });
             }
             
+            function populateFichasCategoryDropdown() {
+                const select = document.getElementById('filter-fichas-categoria');
+                if(!select) return;
+                const currentValue = select.value;
+                select.innerHTML = '<option value="todas">TODAS AS CATEGORIAS</option>';
+                const allCategories = [...new Set([...dishCategories, ...baseRecipeCategories])].sort();
+                allCategories.forEach(cat => {
+                    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+                if(allCategories.includes(currentValue)) select.value = currentValue;
+            }
+
             function renderAllCategoryLists() {
                 renderCategoryList(ingredientCategories, listaCatIngredientes, 'blue', 'ingredient');
                 renderCategoryList(directSaleCategories, listaCatVenda, 'orange', 'directSale');
@@ -1057,6 +1086,7 @@
                 populateIngredientCategoryDropdowns();
                 populateDirectSaleCategoryDropdown();
                 populateDishCategoryDropdown();
+                populateFichasCategoryDropdown();
             }
 
             async function addCategory(event, categoryArray, inputId) {
@@ -1287,11 +1317,20 @@
                 });
             }
 
-            function renderizarFichasParaConsulta() {
+            function renderizarFichasParaConsulta(searchTerm = '', filterType = 'todos', filterCat = 'todas') {
                 listaFichasSalvas.innerHTML = '';
-                const sortedFichas = [...receitasSalvas].sort((a, b) => a.header.descricaoProduto.localeCompare(b.header.descricaoProduto));
+                
+                const filteredFichas = [...receitasSalvas].filter(ficha => {
+                    const matchSearch = ficha.header.descricaoProduto.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchType = filterType === 'todos' || ficha.type === filterType;
+                    const matchCat = filterCat === 'todas' || ficha.header.categoria === filterCat;
+                    return matchSearch && matchType && matchCat;
+                });
+                
+                const sortedFichas = filteredFichas.sort((a, b) => a.header.descricaoProduto.localeCompare(b.header.descricaoProduto));
+                
                 if (sortedFichas.length === 0) {
-                    listaFichasSalvas.innerHTML = '<p class="text-secondary text-center">Nenhuma ficha salva.</p>';
+                    listaFichasSalvas.innerHTML = '<p class="text-secondary text-center">Nenhuma ficha salva com os filtros escolhidos.</p>';
                     return;
                 }
                 sortedFichas.forEach(ficha => {
@@ -1313,17 +1352,45 @@
                         <div class="flex gap-2 flex-wrap">
                             <button type="button" data-id="${ficha.id}" data-custo="true" class="btn-exportar-pdf bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-lg text-sm">PDF (Custo)</button>
                             <button type="button" data-id="${ficha.id}" data-custo="false" class="btn-exportar-pdf btn-secondary text-sm py-1 px-3">PDF (Op.)</button>
+                            <button type="button" data-id="${ficha.id}" class="btn-copiar-ficha bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-lg text-sm">Copiar</button>
                             <button type="button" data-id="${ficha.id}" class="btn-carregar-ficha btn-primary text-sm py-1 px-3">Carregar</button>
                         </div>
                     `;
                     listaFichasSalvas.appendChild(div);
                 });
                 document.querySelectorAll('.btn-carregar-ficha').forEach(btn => btn.addEventListener('click', (e) => carregarFicha(e.currentTarget.dataset.id)));
+                document.querySelectorAll('.btn-copiar-ficha').forEach(btn => btn.addEventListener('click', (e) => copiarFicha(e.currentTarget.dataset.id)));
                 document.querySelectorAll('.btn-exportar-pdf').forEach(btn => btn.addEventListener('click', (e) => {
                     const fichaId = e.currentTarget.dataset.id;
                     const incluirCustos = e.currentTarget.dataset.custo === 'true';
                     gerarPDF(fichaId, incluirCustos);
                 }));
+            }
+            
+            // --- Listeners de Filtro Consulta ---
+            document.getElementById('search-fichas')?.addEventListener('input', () => { showView('consultar'); });
+            document.getElementById('filter-fichas-tipo')?.addEventListener('change', () => { showView('consultar'); });
+            document.getElementById('filter-fichas-categoria')?.addEventListener('change', () => { showView('consultar'); });
+
+            function copiarFicha(id) {
+                const fichaOriginal = receitasSalvas.find(f => f.id == id);
+                if(fichaOriginal) {
+                    const novaDescricao = fichaOriginal.header.descricaoProduto + " - COPIA";
+                    document.getElementById('descricao-produto').value = novaDescricao;
+                    categoriaProdutoSelect.value = fichaOriginal.header.categoria;
+                    rendimentoReceitaKgInput.value = fichaOriginal.header.rendimentoReceitaKg || '';
+                    tamanhoPorcaoGInput.value = fichaOriginal.header.tamanhoPorcaoG || '';
+                    fotoUrlInput.value = fichaOriginal.header.fotoUrl || '';
+                    fotoPreview.src = fichaOriginal.header.fotoUrl || 'https://placehold.co/100x100/e0e7ff/4338ca?text=Foto';
+                    document.getElementById('modo-preparo').value = fichaOriginal.header.modoPreparo || '';
+                    
+                    fichaAtual = JSON.parse(JSON.stringify(fichaOriginal));
+                    fichaAtual.id = null; // Save as new
+                    fichaAtual.header.descricaoProduto = novaDescricao;
+                    
+                    renderizarFichaAtual();
+                    showView('fichas');
+                }
             }
 
             function popularDropdownItens() {
@@ -1677,6 +1744,16 @@
                     precoVenda: precoSugerido
                 };
                 if (!header.descricaoProduto || fichaAtual.componentes.length === 0) { alert("Preencha a descrição e adicione insumos antes de salvar."); return; }
+                
+                // Prevent duplicate names
+                const isDuplicate = receitasSalvas.some(r => 
+                    r.header.descricaoProduto === header.descricaoProduto && r.id !== fichaAtual.id
+                );
+                
+                if (isDuplicate) {
+                    alert("Atenção: Já existe uma ficha salva com este EXATO nome. Por favor, modifique o nome para prosseguir e evitar ambiguidades.");
+                    return;
+                }
                 
                 const custoTotal = fichaAtual.componentes.reduce((acc, item) => acc + item.custoTotal, 0);
                 
