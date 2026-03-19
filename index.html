@@ -585,9 +585,33 @@
                 <!-- View de Margem -->
                 <div id="margem-view" class="view">
                     <div class="card p-4 md:p-8">
-                        <div class="flex justify-between items-center mb-6 border-b border-border-color pb-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-border-color pb-4 gap-4">
                             <h3 class="text-2xl font-bold">Relatório de Margem</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="button" id="btn-configurar-metas-margem" class="btn-secondary text-sm bg-blue-600 hover:bg-blue-700 text-white">⚙️ Metas</button>
+                                <button type="button" id="btn-exportar-margem-pdf" class="btn-primary text-sm bg-red-600 hover:bg-red-700">📄 Exportar PDF</button>
+                            </div>
                         </div>
+
+                        <!-- Panel de Configuração de Metas (Escondido) -->
+                        <div id="panel-metas-margem" class="hidden bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-6 shadow-sm transition-all">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-lg text-blue-800 dark:text-blue-300">Definir Margem Ideal por Categoria (%)</h4>
+                                <button type="button" onclick="document.getElementById('panel-metas-margem').classList.add('hidden')" class="text-blue-500 hover:text-blue-700 font-bold p-1">✕</button>
+                            </div>
+                            <p class="text-sm text-blue-600 dark:text-blue-400 mb-4">Se a margem real ficar abaixo da meta da categoria, ela será destacada em vermelho. Deixe em branco caso a categoria não possua meta.</p>
+                            <div id="grid-metas-margem" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4"></div>
+                            <button type="button" id="btn-salvar-metas-margem" class="btn-primary text-sm bg-green-600 hover:bg-green-700 text-white">Salvar Metas de Margem</button>
+                        </div>
+
+                        <!-- Filtros Margem -->
+                        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                            <input type="text" id="search-margem" class="flex-grow form-input" placeholder="Pesquisar por nome do item...">
+                            <select id="filter-margem-categoria" class="form-select">
+                                <option value="todas">Todas as Categorias</option>
+                            </select>
+                        </div>
+
                         <div id="relatorio-margem-container" class="overflow-x-auto"></div>
                     </div>
                 </div>
@@ -1029,7 +1053,12 @@
                         renderizarFichasParaConsulta(searchInput, filterTipo, filterCat);
                     }
                     if (viewId === 'analise') renderizarAnaliseDeCustos();
-                    if (viewId === 'margem') renderizarRelatorioMargem();
+                    if (viewId === 'margem') {
+                        if (typeof populateMargemCategoryDropdown === 'function') populateMargemCategoryDropdown();
+                        const smM = document.getElementById('search-margem')?.value || '';
+                        const fcM = document.getElementById('filter-margem-categoria')?.value || 'todas';
+                        renderizarRelatorioMargem(smM, fcM);
+                    }
                     if (viewId === 'precos') renderizarListaDePrecos();
                     if (viewId === 'ingredientes') populateIngredientCategoryDropdowns();
                     if (viewId === 'venda-direta') populateDirectSaleCategoryDropdown();
@@ -1087,6 +1116,18 @@
                 if(allCategories.includes(currentValue)) select.value = currentValue;
             }
 
+            function populateMargemCategoryDropdown() {
+                const select = document.getElementById('filter-margem-categoria');
+                if(!select) return;
+                const currentValue = select.value;
+                select.innerHTML = '<option value="todas">Todas as Categorias</option>';
+                const allCategories = [...new Set([...dishCategories, ...directSaleCategories])].sort();
+                allCategories.forEach(cat => {
+                    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+                if(allCategories.includes(currentValue)) select.value = currentValue;
+            }
+
             function renderAllCategoryLists() {
                 renderCategoryList(ingredientCategories, listaCatIngredientes, 'blue', 'ingredient');
                 renderCategoryList(directSaleCategories, listaCatVenda, 'orange', 'directSale');
@@ -1096,6 +1137,7 @@
                 populateDirectSaleCategoryDropdown();
                 populateDishCategoryDropdown();
                 populateFichasCategoryDropdown();
+                if(typeof populateMargemCategoryDropdown === 'function') populateMargemCategoryDropdown();
             }
 
             async function addCategory(event, categoryArray, inputId) {
@@ -1567,25 +1609,82 @@
                 });
             }
 
-            function renderizarRelatorioMargem() {
+            // --- Metas de Margem Configuração ---
+            let metasMargemCache = JSON.parse(localStorage.getItem('cmv_metas_margem')) || {};
+
+            function renderizarPainelMetasMargem() {
+                const grid = document.getElementById('grid-metas-margem');
+                if(!grid) return;
+                grid.innerHTML = '';
+                
+                const allCats = [...new Set([...dishCategories, ...directSaleCategories])].sort();
+                allCats.forEach(cat => {
+                    const val = metasMargemCache[cat] || '';
+                    grid.innerHTML += `
+                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-border-color">
+                            <label class="block text-xs font-medium text-secondary truncate mb-1" title="${cat}">${cat}</label>
+                            <div class="flex items-center gap-1">
+                                <input type="number" step="0.1" class="form-input meta-margem-input w-full text-sm py-1" data-cat="${cat}" value="${val}" placeholder="Ex: 50">
+                                <span class="text-secondary text-sm">%</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('btn-configurar-metas-margem')?.addEventListener('click', () => {
+                const panel = document.getElementById('panel-metas-margem');
+                if(panel.classList.contains('hidden')) {
+                    renderizarPainelMetasMargem();
+                    panel.classList.remove('hidden');
+                } else {
+                    panel.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('btn-salvar-metas-margem')?.addEventListener('click', () => {
+                const inputs = document.querySelectorAll('.meta-margem-input');
+                metasMargemCache = {};
+                inputs.forEach(inp => {
+                    if (inp.value.trim() !== '') {
+                         metasMargemCache[inp.dataset.cat] = parseFloat(inp.value);
+                    }
+                });
+                localStorage.setItem('cmv_metas_margem', JSON.stringify(metasMargemCache));
+                alert("Metas de margem salvas com sucesso!");
+                document.getElementById('panel-metas-margem').classList.add('hidden');
+                renderizarRelatorioMargem(document.getElementById('search-margem')?.value, document.getElementById('filter-margem-categoria')?.value);
+            });
+
+            function renderizarRelatorioMargem(searchTerm = '', filterCategory = 'todas') {
                 relatorioMargemContainer.innerHTML = '';
                 
-                const pratos = receitasSalvas.filter(r => r.type === 'prato').map(p => ({
+                let pratos = receitasSalvas.filter(r => r.type === 'prato').map(p => ({
                     nome: p.header.descricaoProduto,
+                    categoria: p.header.categoria || 'SEM CATEGORIA',
+                    subcategoria: p.header.subcategoria || '',
                     custo: (p.custoTotal / p.header.rendimentoReceitaKg) * (p.header.tamanhoPorcaoG / 1000) || 0,
                     precoVenda: p.header.precoVenda || 0
                 }));
 
-                const produtosVenda = produtosVendaDireta.map(p => ({
+                let produtosVenda = produtosVendaDireta.map(p => ({
                     nome: p.nome,
+                    categoria: p.category || 'SEM CATEGORIA',
+                    subcategoria: '',
                     custo: p.precoCompra,
                     precoVenda: p.precoVenda
                 }));
 
-                const todosItens = [...pratos, ...produtosVenda].sort((a,b) => a.nome.localeCompare(b.nome));
+                let todosItens = [...pratos, ...produtosVenda].sort((a,b) => a.nome.localeCompare(b.nome));
+
+                todosItens = todosItens.filter(item => {
+                    const matchSearch = item.nome.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchCat = filterCategory === 'todas' || item.categoria === filterCategory;
+                    return matchSearch && matchCat;
+                });
 
                 if (todosItens.length === 0) {
-                    relatorioMargemContainer.innerHTML = '<p class="text-secondary text-center">Nenhum item de venda para gerar relatório.</p>';
+                    relatorioMargemContainer.innerHTML = '<p class="text-secondary text-center py-4">Nenhum item encontrado com os filtros informados.</p>';
                     return;
                 }
 
@@ -1606,15 +1705,34 @@
                 todosItens.forEach(item => {
                     const margemReais = item.precoVenda - item.custo;
                     const margemPercent = item.precoVenda > 0 ? (margemReais / item.precoVenda) * 100 : 0;
-                    const corMargem = margemReais > 0 ? 'text-green-600' : 'text-red-600';
+                    
+                    let corMargem = margemReais > 0 ? 'text-green-600' : 'text-red-600';
+                    let alertaMeta = '';
+
+                    const meta = metasMargemCache[item.categoria];
+                    if (meta !== undefined) {
+                        if (margemPercent < meta) {
+                            corMargem = 'text-red-600';
+                            alertaMeta = `<span class="text-xs text-red-500 font-bold ml-2 underline decoration-red-400" title="Abaixo da Meta Padrão (${meta}%)">⚠️ Abaixo do Ideal (${meta}%)</span>`;
+                        } else {
+                            corMargem = 'text-green-600';
+                            alertaMeta = `<span class="text-xs text-green-500 font-bold ml-2">✓ OK</span>`;
+                        }
+                    }
 
                     tableHTML += `
-                        <tr class="table-row">
-                            <td class="px-4 py-2 whitespace-nowrap font-medium">${item.nome}</td>
+                        <tr class="table-row hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <td class="px-4 py-2 whitespace-nowrap">
+                                <div class="font-medium">${item.nome}</div>
+                                <div class="text-xs text-secondary">${item.categoria}${item.subcategoria ? ' > ' + item.subcategoria : ''}</div>
+                            </td>
                             <td class="px-4 py-2 whitespace-nowrap text-secondary">R$ ${item.custo.toFixed(2)}</td>
                             <td class="px-4 py-2 whitespace-nowrap text-secondary">R$ ${item.precoVenda.toFixed(2)}</td>
                             <td class="px-4 py-2 whitespace-nowrap font-semibold ${corMargem}">R$ ${margemReais.toFixed(2)}</td>
-                            <td class="px-4 py-2 whitespace-nowrap font-semibold ${corMargem}">${margemPercent.toFixed(2)}%</td>
+                            <td class="px-4 py-2 whitespace-nowrap font-semibold ${corMargem}">
+                                ${margemPercent.toFixed(2)}%
+                                ${alertaMeta}
+                            </td>
                         </tr>
                     `;
                 });
@@ -1622,6 +1740,75 @@
                 tableHTML += '</tbody></table>';
                 relatorioMargemContainer.innerHTML = tableHTML;
             }
+
+            document.getElementById('search-margem')?.addEventListener('input', () => { showView('margem'); });
+            document.getElementById('filter-margem-categoria')?.addEventListener('change', () => { showView('margem'); });
+
+            function gerarPDFMargem() {
+                if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) { alert("A biblioteca jsPDF ainda não carregou. Tente novamente."); return; }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('landscape');
+                
+                doc.setFontSize(22);
+                doc.text("Relatório de Margens de Lucro", 148, 20, null, null, "center");
+                
+                const dataFormatada = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+                doc.setFontSize(10);
+                doc.text(`Gerado em: ${dataFormatada}`, 148, 28, null, null, "center");
+
+                const tableColumn = ["Item", "Categoria", "Custo Unit.", "Preço Venda", "Margem (R$)", "Margem (%)", "Status Meta"];
+                const tableRows = [];
+
+                const searchTerm = document.getElementById('search-margem')?.value || '';
+                const filterCategory = document.getElementById('filter-margem-categoria')?.value || 'todas';
+
+                let pratos = receitasSalvas.filter(r => r.type === 'prato').map(p => ({
+                    nome: p.header.descricaoProduto,
+                    categoria: p.header.categoria || 'SEM CATEGORIA',
+                    custo: (p.custoTotal / p.header.rendimentoReceitaKg) * (p.header.tamanhoPorcaoG / 1000) || 0,
+                    precoVenda: p.header.precoVenda || 0
+                }));
+
+                let produtosVenda = produtosVendaDireta.map(p => ({
+                    nome: p.nome,
+                    categoria: p.category || 'SEM CATEGORIA',
+                    custo: p.precoCompra,
+                    precoVenda: p.precoVenda
+                }));
+
+                let itemsExport = [...pratos, ...produtosVenda].sort((a,b) => a.nome.localeCompare(b.nome));
+
+                itemsExport = itemsExport.filter(item => {
+                    const matchSearch = item.nome.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchCat = filterCategory === 'todas' || item.categoria === filterCategory;
+                    return matchSearch && matchCat;
+                });
+
+                itemsExport.forEach(item => {
+                    const margemReais = item.precoVenda - item.custo;
+                    const margemPercent = item.precoVenda > 0 ? (margemReais / item.precoVenda) * 100 : 0;
+                    
+                    let statusMeta = "N/A / Nenhuma Meta";
+                    const meta = metasMargemCache[item.categoria];
+                    if (meta !== undefined) {
+                        statusMeta = margemPercent < meta ? `ABAIXO (Meta: ${meta}%)` : `OK (Meta: ${meta}%)`;
+                    }
+
+                    tableRows.push([
+                        item.nome,
+                        item.categoria,
+                        `R$ ${item.custo.toFixed(2)}`,
+                        `R$ ${item.precoVenda.toFixed(2)}`,
+                        `R$ ${margemReais.toFixed(2)}`,
+                        `${margemPercent.toFixed(2)}%`,
+                        statusMeta
+                    ]);
+                });
+
+                doc.autoTable(tableColumn, tableRows, { startY: 35, styles: { fontSize: 9 } });
+                doc.save(`relatorio_margens_${new Date().getTime()}.pdf`);
+            }
+            document.getElementById('btn-exportar-margem-pdf')?.addEventListener('click', gerarPDFMargem);
 
             function renderizarListaDePrecos() {
                 listaPrecosContainer.innerHTML = '';
