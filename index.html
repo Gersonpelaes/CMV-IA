@@ -1399,6 +1399,7 @@
             document.getElementById('filter-fichas-categoria')?.addEventListener('change', () => { showView('consultar'); });
 
             function copiarFicha(id) {
+                window.returnToConsulta = true;
                 const fichaOriginal = receitasSalvas.find(f => f.id == id);
                 if(fichaOriginal) {
                     const novaDescricao = fichaOriginal.header.descricaoProduto + " - COPIA";
@@ -1732,6 +1733,7 @@
             }
 
             function limparFicha() {
+                window.returnToConsulta = false;
                 fichaAtual = { id: null, header: {}, componentes: [] };
                 formFichaHeader.reset();
                 rendimentoReceitaKgInput.value = '';
@@ -1744,6 +1746,7 @@
             }
             
             function carregarFicha(id) {
+                window.returnToConsulta = true;
                 const fichaParaCarregar = receitasSalvas.find(f => f.id == id);
                 if(fichaParaCarregar) {
                     document.getElementById('descricao-produto').value = fichaParaCarregar.header.descricaoProduto;
@@ -1804,7 +1807,11 @@
                     alert(`Ficha "${header.descricaoProduto}" salva como ${tipo} com sucesso!`);
                 }
                 
-                limparFicha();
+                const returnToConsulta = window.returnToConsulta;
+                limparFicha(); // this will set window.returnToConsulta to false
+                if (returnToConsulta) {
+                    showView('consultar');
+                }
             }
 
             function gerarPDF(fichaId, incluirCustos) {
