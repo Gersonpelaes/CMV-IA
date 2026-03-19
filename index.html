@@ -448,10 +448,11 @@
                             <button type="button" id="btn-nova-ficha" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">Limpar Ficha</button>
                         </div>
                         <form id="form-ficha-header" class="mb-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div class="lg:col-span-2"><label for="descricao-produto" class="block text-sm font-medium text-secondary">Descrição do Produto</label><input type="text" id="descricao-produto" placeholder="Ex: Espeto Baiano" class="mt-1 form-input"></div>
-                                <div><label for="categoria-produto" class="block text-sm font-medium text-secondary">Categoria</label><select id="categoria-produto" class="mt-1 form-select"></select></div>
-                                <div class="lg:col-span-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                <div class="lg:col-span-2"><label for="descricao-produto" class="block text-sm font-medium text-secondary">Descrição do Produto</label><input type="text" id="descricao-produto" placeholder="Ex: Espeto Baiano" class="mt-1 form-input uppercase"></div>
+                                <div><label for="categoria-produto" class="block text-sm font-medium text-secondary">Categoria Padrão</label><select id="categoria-produto" class="mt-1 form-select"></select></div>
+                                <div class="lg:col-span-2"><label for="subcategoria-produto" class="block text-sm font-medium text-secondary">Subcategoria (Opcional)</label><input type="text" id="subcategoria-produto" list="list-subcategorias" placeholder="Ex: Marmitex Pequena" class="mt-1 form-input uppercase"><datalist id="list-subcategorias"></datalist></div>
+                                <div class="lg:col-span-5">
                                     <label class="block text-sm font-medium text-secondary">Foto do Prato</label>
                                     <div class="mt-1 flex items-center gap-4">
                                         <img id="foto-preview" src="https://placehold.co/100x100/e0e7ff/4338ca?text=Foto" class="w-24 h-24 object-cover rounded-lg bg-gray-100">
@@ -949,6 +950,14 @@
                 // Listener para Receitas/Fichas
                 onSnapshot(query(collection(db, getCollectionPath('recipes'))), (snapshot) => {
                     receitasSalvas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    // Update Subcategories Datalist
+                    const subcatList = document.getElementById('list-subcategorias');
+                    if (subcatList) {
+                        const subs = [...new Set(receitasSalvas.map(r => r.header.subcategoria).filter(Boolean))].sort();
+                        subcatList.innerHTML = subs.map(s => `<option value="${s}">`).join('');
+                    }
+
                     const activeViewEl = document.querySelector('.view.active');
                     if (activeViewEl) {
                         const activeView = activeViewEl.id.replace('-view', '');
@@ -1327,20 +1336,34 @@
                     return matchSearch && matchType && matchCat;
                 });
                 
-                const sortedFichas = filteredFichas.sort((a, b) => a.header.descricaoProduto.localeCompare(b.header.descricaoProduto));
-                
-                if (sortedFichas.length === 0) {
+                if (filteredFichas.length === 0) {
                     listaFichasSalvas.innerHTML = '<p class="text-secondary text-center">Nenhuma ficha salva com os filtros escolhidos.</p>';
                     return;
                 }
-                sortedFichas.forEach(ficha => {
-                    const custoPorPorcao = (ficha.custoTotal / ficha.header.rendimentoReceitaKg) * (ficha.header.tamanhoPorcaoG / 1000) || 0;
-                    const tipoFicha = ficha.type === 'base' 
-                        ? '<span class="text-xs font-semibold bg-purple-600 text-white px-2 py-1 rounded-full">BASE</span>' 
-                        : '<span class="text-xs font-semibold bg-green-600 text-white px-2 py-1 rounded-full">PRATO</span>';
 
-                    const div = document.createElement('div');
-                    div.className = 'bg-form-bg p-3 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center border border-border-color gap-3';
+                const groupedFichas = filteredFichas.reduce((acc, ficha) => {
+                    const cat = ficha.header.categoria || 'Sem Categoria';
+                    const sub = ficha.header.subcategoria || 'Gerais';
+                    const key = `${cat} > ${sub}`;
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(ficha);
+                    return acc;
+                }, {});
+
+                Object.keys(groupedFichas).sort().forEach(groupName => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.innerHTML = `<h4 class="text-md font-semibold text-blue-700 dark:text-blue-400 mt-4 mb-2 pb-1 border-b border-border-color">${groupName}</h4>`;
+                    const innerList = document.createElement('div');
+                    innerList.className = 'space-y-3';
+
+                    groupedFichas[groupName].sort((a,b) => a.header.descricaoProduto.localeCompare(b.header.descricaoProduto)).forEach(ficha => {
+                        const custoPorPorcao = (ficha.custoTotal / ficha.header.rendimentoReceitaKg) * (ficha.header.tamanhoPorcaoG / 1000) || 0;
+                        const tipoFicha = ficha.type === 'base' 
+                            ? '<span class="text-xs font-semibold bg-purple-600 text-white px-2 py-1 rounded-full">BASE</span>' 
+                            : '<span class="text-xs font-semibold bg-green-600 text-white px-2 py-1 rounded-full">PRATO</span>';
+
+                        const div = document.createElement('div');
+                        div.className = 'bg-form-bg p-3 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center border border-border-color gap-3';
                     div.innerHTML = `
                         <div class="flex items-center gap-4">
                             ${tipoFicha}
@@ -1356,7 +1379,10 @@
                             <button type="button" data-id="${ficha.id}" class="btn-carregar-ficha btn-primary text-sm py-1 px-3">Carregar</button>
                         </div>
                     `;
-                    listaFichasSalvas.appendChild(div);
+                        innerList.appendChild(div);
+                    });
+                    groupDiv.appendChild(innerList);
+                    listaFichasSalvas.appendChild(groupDiv);
                 });
                 document.querySelectorAll('.btn-carregar-ficha').forEach(btn => btn.addEventListener('click', (e) => carregarFicha(e.currentTarget.dataset.id)));
                 document.querySelectorAll('.btn-copiar-ficha').forEach(btn => btn.addEventListener('click', (e) => copiarFicha(e.currentTarget.dataset.id)));
@@ -1378,6 +1404,7 @@
                     const novaDescricao = fichaOriginal.header.descricaoProduto + " - COPIA";
                     document.getElementById('descricao-produto').value = novaDescricao;
                     categoriaProdutoSelect.value = fichaOriginal.header.categoria;
+                    document.getElementById('subcategoria-produto').value = fichaOriginal.header.subcategoria || '';
                     rendimentoReceitaKgInput.value = fichaOriginal.header.rendimentoReceitaKg || '';
                     tamanhoPorcaoGInput.value = fichaOriginal.header.tamanhoPorcaoG || '';
                     fotoUrlInput.value = fichaOriginal.header.fotoUrl || '';
@@ -1596,16 +1623,18 @@
                 }
 
                 const groupedPratos = pratos.reduce((acc, prato) => {
-                    const category = prato.header.categoria || 'SEM CATEGORIA';
-                    if (!acc[category]) acc[category] = [];
-                    acc[category].push(prato);
+                    const cat = prato.header.categoria || 'SEM CATEGORIA';
+                    const sub = prato.header.subcategoria ? ` > ${prato.header.subcategoria}` : '';
+                    const groupName = cat + sub;
+                    if (!acc[groupName]) acc[groupName] = [];
+                    acc[groupName].push(prato);
                     return acc;
                 }, {});
 
                 const groupedProdutos = produtosVendaDireta.reduce((acc, prod) => {
-                    const category = prod.category || 'SEM CATEGORIA';
-                    if (!acc[category]) acc[category] = [];
-                    acc[category].push(prod);
+                    const groupName = prod.category || 'SEM CATEGORIA';
+                    if (!acc[groupName]) acc[groupName] = [];
+                    acc[groupName].push(prod);
                     return acc;
                 }, {});
 
@@ -1708,6 +1737,7 @@
                 rendimentoReceitaKgInput.value = '';
                 tamanhoPorcaoGInput.value = '';
                 document.getElementById('modo-preparo').value = '';
+                document.getElementById('subcategoria-produto').value = '';
                 fotoPreview.src = 'https://placehold.co/100x100/e0e7ff/4338ca?text=Foto';
                 fotoUrlInput.value = '';
                 renderizarFichaAtual();
@@ -1718,6 +1748,7 @@
                 if(fichaParaCarregar) {
                     document.getElementById('descricao-produto').value = fichaParaCarregar.header.descricaoProduto;
                     categoriaProdutoSelect.value = fichaParaCarregar.header.categoria;
+                    document.getElementById('subcategoria-produto').value = fichaParaCarregar.header.subcategoria || '';
                     rendimentoReceitaKgInput.value = fichaParaCarregar.header.rendimentoReceitaKg || '';
                     tamanhoPorcaoGInput.value = fichaParaCarregar.header.tamanhoPorcaoG || '';
                     fotoUrlInput.value = fichaParaCarregar.header.fotoUrl || '';
@@ -1737,6 +1768,7 @@
                 const header = {
                     descricaoProduto: document.getElementById('descricao-produto').value.toUpperCase(),
                     categoria: document.getElementById('categoria-produto').value,
+                    subcategoria: document.getElementById('subcategoria-produto').value.toUpperCase(),
                     rendimentoReceitaKg: parseFloat(rendimentoReceitaKgInput.value),
                     tamanhoPorcaoG: parseFloat(tamanhoPorcaoGInput.value),
                     fotoUrl: fotoUrlInput.value,
