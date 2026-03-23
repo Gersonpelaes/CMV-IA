@@ -1912,21 +1912,81 @@
                 precoSugeridoSpan.textContent = `R$ ${precoSugerido.toFixed(2)}`;
             }
             
-            function recalcularCustoFicha(ficha, listaIngredientes) {
+            function recalcularCustoFicha(ficha, listaIngredientes, listaReceitas = receitasSalvas) {
                 return ficha.componentes.reduce((total, item) => {
                     if (item.type === 'ing') {
                         const ingAtual = listaIngredientes.find(i => i.nome === item.nome);
                         if (ingAtual) return total + (item.qtdeBruta * ingAtual.custoBase);
                     } else if (item.type === 'rec') {
-                        const recBase = receitasSalvas.find(r => r.header.descricaoProduto === item.nome);
+                        const recBase = listaReceitas.find(r => r.header.descricaoProduto === item.nome);
                         if(recBase) {
-                            const custoRecBaseAtual = recalcularCustoFicha(recBase, listaIngredientes);
+                            const custoRecBaseAtual = recalcularCustoFicha(recBase, listaIngredientes, listaReceitas);
                             const custoPorUnidadeBase = custoRecBaseAtual / (recBase.header.rendimentoReceitaKg || 1);
                             return total + (item.qtdeLiquida * custoPorUnidadeBase);
                         }
                     }
                     return total;
                 }, 0);
+            }
+
+            async function propagarNovosCustosParaReceitas(listaIngredientesAtualizada, listaReceitasAtualizada = receitasSalvas) {
+                const updatePromises = [];
+
+                listaReceitasAtualizada.forEach(receita => {
+                    let houveMudanca = false;
+                    let novoCustoTotalDaFicha = 0;
+
+                    const novosComponentes = receita.componentes.map(item => {
+                        let novoCustoUnitario = item.custoUnitario;
+                        let novoItemCustoTotal = item.custoTotal;
+
+                        if (item.type === 'ing') {
+                            const ingAtual = listaIngredientesAtualizada.find(i => i.nome === item.nome);
+                            if (ingAtual) {
+                                novoCustoUnitario = ingAtual.custoBase;
+                                novoItemCustoTotal = item.qtdeBruta * novoCustoUnitario;
+                            }
+                        } else if (item.type === 'rec') {
+                            const recBase = listaReceitasAtualizada.find(r => r.header.descricaoProduto === item.nome);
+                            if (recBase) {
+                                const custoRecBaseAtual = recalcularCustoFicha(recBase, listaIngredientesAtualizada, listaReceitasAtualizada);
+                                novoCustoUnitario = custoRecBaseAtual / (recBase.header.rendimentoReceitaKg || 1);
+                                novoItemCustoTotal = item.qtdeLiquida * novoCustoUnitario;
+                            }
+                        }
+
+                        if (Math.abs(novoCustoUnitario - item.custoUnitario) > 0.001 || Math.abs(novoItemCustoTotal - item.custoTotal) > 0.001) {
+                            houveMudanca = true;
+                        }
+
+                        novoCustoTotalDaFicha += novoItemCustoTotal;
+
+                        return {
+                            ...item,
+                            custoUnitario: novoCustoUnitario,
+                            custoTotal: novoItemCustoTotal
+                        };
+                    });
+
+                    if (houveMudanca || Math.abs(novoCustoTotalDaFicha - receita.custoTotal) > 0.001) {
+                        const receitaRef = doc(db, getCollectionPath('recipes'), receita.id);
+                        if (receitaRef) {
+                            updatePromises.push(updateDoc(receitaRef, {
+                                componentes: novosComponentes,
+                                custoTotal: novoCustoTotalDaFicha
+                            }));
+                        }
+                    }
+                });
+
+                if (updatePromises.length > 0) {
+                    try {
+                        await Promise.all(updatePromises);
+                        console.log(`Foram atualizados os custos em cascata para ${updatePromises.length} receitas/pratos.`);
+                    } catch(e) {
+                        console.error('Erro na propagação de custos em cascata:', e);
+                    }
+                }
             }
 
             function limparFicha() {
@@ -1998,9 +2058,22 @@
 
                 if (fichaAtual.id) {
                     await setDoc(doc(db, getCollectionPath('recipes'), fichaAtual.id), novaFicha);
+                    if (tipo === 'base') {
+                        const receitasAposSalvar = JSON.parse(JSON.stringify(receitasSalvas));
+                        const recIndex = receitasAposSalvar.findIndex(r => r.id === fichaAtual.id);
+                        if (recIndex > -1) {
+                            receitasAposSalvar[recIndex] = { id: fichaAtual.id, ...novaFicha };
+                        }
+                        await propagarNovosCustosParaReceitas(ingredientes, receitasAposSalvar);
+                    }
                     alert(`Ficha "${header.descricaoProduto}" atualizada com sucesso!`);
                 } else {
-                    await addDoc(collection(db, getCollectionPath('recipes')), novaFicha);
+                    const docRef = await addDoc(collection(db, getCollectionPath('recipes')), novaFicha);
+                    if (tipo === 'base') {
+                        const receitasAposSalvar = JSON.parse(JSON.stringify(receitasSalvas));
+                        receitasAposSalvar.push({ id: docRef.id, ...novaFicha });
+                        await propagarNovosCustosParaReceitas(ingredientes, receitasAposSalvar);
+                    }
                     alert(`Ficha "${header.descricaoProduto}" salva como ${tipo} com sucesso!`);
                 }
                 
@@ -2658,6 +2731,14 @@
                 
                 const ingredientRef = doc(db, getCollectionPath('ingredients'), id);
                 await updateDoc(ingredientRef, updatedIngredient);
+                
+                const listaIngredientesAtualizada = JSON.parse(JSON.stringify(ingredientes));
+                const ingIndex = listaIngredientesAtualizada.findIndex(i => i.id === id);
+                if (ingIndex > -1) {
+                    listaIngredientesAtualizada[ingIndex] = { id, ...updatedIngredient };
+                }
+                await propagarNovosCustosParaReceitas(listaIngredientesAtualizada);
+
                 alert('Ingrediente atualizado com sucesso!');
                 closeEditIngredientModal();
             });
@@ -2883,6 +2964,7 @@
 
                     const inputs = formAtualizarPrecos.querySelectorAll('input[type="number"]');
                     const updatePromises = [];
+                    const listaIngredientesAtualizada = JSON.parse(JSON.stringify(ingredientes));
 
                     inputs.forEach(input => {
                         const ingredientId = input.dataset.id;
@@ -2891,6 +2973,13 @@
 
                         if (ingredient && !isNaN(newPrice) && newPrice > 0 && newPrice !== ingredient.precoCompra) {
                             const newCustoBase = newPrice / ingredient.unidadeCompraQtd;
+                            
+                            const ingAtualizado = listaIngredientesAtualizada.find(i => i.id === ingredientId);
+                            if (ingAtualizado) {
+                                ingAtualizado.precoCompra = newPrice;
+                                ingAtualizado.custoBase = newCustoBase;
+                            }
+
                             const ingredientRef = doc(db, getCollectionPath('ingredients'), ingredientId);
                             updatePromises.push(updateDoc(ingredientRef, {
                                 precoCompra: newPrice,
@@ -2905,6 +2994,7 @@
 
                     if (updatePromises.length > 0) {
                         await Promise.all(updatePromises);
+                        await propagarNovosCustosParaReceitas(listaIngredientesAtualizada);
                         alert('Preços e histórico de custos atualizados com sucesso!');
                     } else {
                         alert('Nenhum preço foi alterado.');
