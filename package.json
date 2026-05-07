@@ -1,0 +1,10 @@
+{
+  "name": "cmv.ia",
+  "version": "1.0.0",
+  "description": "CMV.IA SaaS Backend",
+  "main": "index.html",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "firebase-admin": "^12.1.0"
+  }
+}

@@ -175,6 +175,22 @@
         </div>
     </div>
 
+    <!-- Subscription View -->
+    <div id="subscription-view" class="hidden items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 absolute inset-0 z-50">
+        <div class="w-full max-w-md">
+            <div class="card p-8 text-center">
+                <svg class="w-20 h-20 mx-auto text-amber-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <h2 class="text-3xl font-bold text-primary mb-2">Período de Teste Expirado</h2>
+                <p class="text-secondary mb-6">O seu período de teste de 31 dias chegou ao fim. Para continuar usando o CMV.IA e ter acesso a todas as funcionalidades de gestão, por favor assine o nosso plano mensal de R$ 25,00.</p>
+                <button id="btn-assinar-agora" class="w-full btn-primary bg-green-600 hover:bg-green-700 py-3 mb-4 flex justify-center items-center">
+                    <span class="btn-text">Assinar Agora (Mercado Pago)</span>
+                    <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
+                </button>
+                <button id="btn-logout-sub" class="text-secondary hover:text-red-500 underline text-sm">Sair</button>
+            </div>
+        </div>
+    </div>
+
     <div id="app-container" class="relative min-h-screen md:flex hidden">
         <!-- Overlay para menu mobile -->
         <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
@@ -788,7 +804,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- FIREBASE SETUP ---
         let db, auth, restaurantId;
@@ -3206,8 +3222,17 @@
                     const user = userCredential.user;
 
                     // Criar o documento do restaurante e as categorias iniciais
+                    const trialEndsAt = new Date();
+                    trialEndsAt.setDate(trialEndsAt.getDate() + 31);
                     const restaurantDocRef = doc(db, 'restaurants', user.uid);
-                    await setDoc(restaurantDocRef, { name: restaurantName, owner: user.uid, createdAt: new Date() });
+                    await setDoc(restaurantDocRef, { 
+                        name: restaurantName, 
+                        email: user.email,
+                        owner: user.uid, 
+                        createdAt: new Date(),
+                        planStatus: 'trial',
+                        trialEndsAt: trialEndsAt
+                    });
                     
                     // Definir categorias iniciais para o novo restaurante
                     ingredientCategories = ['CARNES', 'LATICÍNIOS', 'HORTIFRUTI', 'MERCEARIA', 'PEIXES'];
@@ -3272,18 +3297,81 @@
                 });
             }
 
+            function showSubscriptionView(uid, email) {
+                authView.style.display = 'none';
+                appContainer.style.display = 'none';
+                const subView = document.getElementById('subscription-view');
+                if (subView) {
+                    subView.style.display = 'flex';
+                    subView.classList.remove('hidden');
+                    
+                    const btnAssinar = document.getElementById('btn-assinar-agora');
+                    btnAssinar.onclick = async () => {
+                        const btnText = btnAssinar.querySelector('.btn-text');
+                        const loader = btnAssinar.querySelector('.loader');
+                        btnText.classList.add('hidden');
+                        loader.classList.remove('hidden');
+                        btnAssinar.disabled = true;
+                        
+                        try {
+                            const res = await fetch('/.netlify/functions/create-subscription', {
+                                method: 'POST',
+                                body: JSON.stringify({ uid, email })
+                            });
+                            const data = await res.json();
+                            if (data.init_point) {
+                                window.location.href = data.init_point;
+                            } else {
+                                alert("Erro ao gerar link de pagamento.");
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            alert("Falha na comunicação com o servidor.");
+                        } finally {
+                            btnText.classList.remove('hidden');
+                            loader.classList.add('hidden');
+                            btnAssinar.disabled = false;
+                        }
+                    };
+
+                    document.getElementById('btn-logout-sub').onclick = async () => {
+                        await signOut(auth);
+                        window.location.reload();
+                    };
+                }
+            }
+
             // --- INICIALIZAÇÃO DO FIREBASE ---
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                onAuthStateChanged(auth, (user) => {
+                onAuthStateChanged(auth, async (user) => {
                     if (user) {
+                        try {
+                            const userDoc = await getDoc(doc(db, 'restaurants', user.uid));
+                            if (userDoc.exists()) {
+                                const userData = userDoc.data();
+                                const planStatus = userData.planStatus || 'trial';
+                                const trialEndsAt = userData.trialEndsAt ? userData.trialEndsAt.toDate() : new Date();
+                                const now = new Date();
+                                
+                                if (planStatus === 'trial' && now > trialEndsAt) {
+                                    showSubscriptionView(user.uid, user.email);
+                                    return;
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Erro ao verificar assinatura:", e);
+                        }
+
                         restaurantId = user.uid; // Usamos o UID do user como ID do restaurante
                         console.log("User signed in with UID:", restaurantId);
                         document.getElementById('user-email').textContent = user.email;
                         authView.style.display = 'none';
+                        const subView = document.getElementById('subscription-view');
+                        if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
                         appContainer.style.display = 'flex';
                         setupRealtimeListeners(); 
                         showView('dashboard');
@@ -3292,6 +3380,8 @@
                         console.log("No user signed in.");
                         authView.style.display = 'flex';
                         appContainer.style.display = 'none';
+                        const subView = document.getElementById('subscription-view');
+                        if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
                     }
                 });
 
