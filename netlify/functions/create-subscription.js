@@ -13,7 +13,11 @@ exports.handler = async function(event, context) {
             return { statusCode: 400, body: JSON.stringify({ error: 'UID é obrigatório.' }) };
         }
 
-        const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "APP_USR-5678099220626441-082816-f3ef8d545a6468ae92a37627ab8c5063-1213742777";
+        const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+        if (!MP_ACCESS_TOKEN) {
+            console.error("Token do Mercado Pago não configurado na variável de ambiente MP_ACCESS_TOKEN.");
+            return { statusCode: 500, body: JSON.stringify({ error: 'Erro de configuração do servidor. Token ausente.' }) };
+        }
 
         const response = await axios.post("https://api.mercadopago.com/preapproval", {
             reason: "Assinatura CMV.IA",
