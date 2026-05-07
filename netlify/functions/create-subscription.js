@@ -7,7 +7,7 @@ exports.handler = async function(event, context) {
 
     try {
         const data = JSON.parse(event.body);
-        const { uid, email } = data;
+        const { uid, email, planType } = data;
 
         if (!uid) {
             return { statusCode: 400, body: JSON.stringify({ error: 'UID é obrigatório.' }) };
@@ -19,17 +19,28 @@ exports.handler = async function(event, context) {
             return { statusCode: 500, body: JSON.stringify({ error: 'Erro de configuração do servidor. Token ausente.' }) };
         }
 
-        const response = await axios.post("https://api.mercadopago.com/preapproval", {
-            reason: "Assinatura CMV.IA",
-            external_reference: uid,
-            payer_email: email || "cliente@email.com",
-            auto_recurring: {
-                frequency: 1,
-                frequency_type: "months",
-                transaction_amount: 25.00,
-                currency_id: "BRL"
+        const title = planType === 'anual' ? "Acesso Anual CMV.IA" : "Acesso Mensal CMV.IA";
+        const price = planType === 'anual' ? 150.00 : 25.00;
+
+        const response = await axios.post("https://api.mercadopago.com/checkout/preferences", {
+            items: [
+                {
+                    title: title,
+                    quantity: 1,
+                    currency_id: "BRL",
+                    unit_price: price
+                }
+            ],
+            payer: {
+                email: email || "cliente@email.com"
             },
-            back_url: "https://cmv-ia.netlify.app/" // URL de retorno
+            external_reference: uid,
+            back_urls: {
+                success: "https://cmv-ia.netlify.app/",
+                failure: "https://cmv-ia.netlify.app/",
+                pending: "https://cmv-ia.netlify.app/"
+            },
+            auto_return: "approved"
         }, {
             headers: {
                 Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
@@ -42,7 +53,7 @@ exports.handler = async function(event, context) {
             body: JSON.stringify({ init_point: response.data.init_point })
         };
     } catch (error) {
-        console.error("Erro ao criar assinatura:", error.response?.data || error.message);
+        console.error("Erro ao criar preferência de pagamento:", error.response?.data || error.message);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Erro ao gerar o link de pagamento do Mercado Pago.' })

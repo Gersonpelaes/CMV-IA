@@ -182,10 +182,16 @@
                 <svg class="w-20 h-20 mx-auto text-amber-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 <h2 class="text-3xl font-bold text-primary mb-2">Período de Teste Expirado</h2>
                 <p class="text-secondary mb-6">O seu período de teste de 31 dias chegou ao fim. Para continuar usando o CMV.IA e ter acesso a todas as funcionalidades de gestão, por favor assine o nosso plano mensal de R$ 25,00.</p>
-                <button type="button" id="btn-assinar-agora" class="w-full btn-primary bg-green-600 hover:bg-green-700 py-3 mb-4 flex justify-center items-center">
-                    <span class="btn-text">Assinar Agora (Mercado Pago)</span>
-                    <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
-                </button>
+                <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                    <button type="button" id="btn-assinar-mensal-agora" class="w-full btn-primary bg-blue-600 hover:bg-blue-700 py-3 flex justify-center items-center">
+                        <span class="btn-text">Mensal (R$ 25)</span>
+                        <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
+                    </button>
+                    <button type="button" id="btn-assinar-anual-agora" class="w-full btn-primary bg-green-600 hover:bg-green-700 py-3 flex justify-center items-center">
+                        <span class="btn-text">Anual (R$ 150)</span>
+                        <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
+                    </button>
+                </div>
                 <button id="btn-logout-sub" class="text-secondary hover:text-red-500 underline text-sm">Sair</button>
             </div>
         </div>
@@ -342,10 +348,16 @@
                                             <p class="text-lg font-medium">Status do Plano: <span id="status-plano-badge" class="font-bold text-amber-500">Trial</span></p>
                                             <p id="trial-info-text" class="text-sm text-secondary mt-1">Seu período de teste expira em: <span id="data-expiracao-trial" class="font-bold">--/--/----</span></p>
                                         </div>
-                                        <button type="button" id="btn-assinar-settings" class="btn-primary bg-green-600 hover:bg-green-700 flex justify-center items-center">
-                                            <span class="btn-text">Assinar Agora (R$ 25,00/mês)</span>
-                                            <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
-                                        </button>
+                                        <div class="flex gap-2" id="botoes-assinatura-settings">
+                                            <button type="button" id="btn-assinar-mensal-settings" class="btn-primary bg-blue-600 hover:bg-blue-700 flex justify-center items-center">
+                                                <span class="btn-text">Mensal (R$ 25)</span>
+                                                <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
+                                            </button>
+                                            <button type="button" id="btn-assinar-anual-settings" class="btn-primary bg-green-600 hover:bg-green-700 flex justify-center items-center">
+                                                <span class="btn-text">Anual (R$ 150)</span>
+                                                <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3321,10 +3333,9 @@
                     subView.style.display = 'flex';
                     subView.classList.remove('hidden');
                     
-                    const btnAssinar = document.getElementById('btn-assinar-agora');
-                    btnAssinar.onclick = async (e) => {
+                    const assinarHandlerTrial = async (e, planType, btnAssinar) => {
                         e.preventDefault();
-                        console.log("Botão Assinar (Trial) Clicado");
+                        console.log("Botão Assinar (Trial) Clicado:", planType);
                         const btnText = btnAssinar.querySelector('.btn-text');
                         const loader = btnAssinar.querySelector('.loader');
                         btnText.classList.add('hidden');
@@ -3332,10 +3343,10 @@
                         btnAssinar.disabled = true;
                         
                         try {
-                            console.log("Buscando link de assinatura...");
+                            console.log("Buscando link de assinatura...", planType);
                             const res = await fetch('/.netlify/functions/create-subscription', {
                                 method: 'POST',
-                                body: JSON.stringify({ uid, email })
+                                body: JSON.stringify({ uid, email, planType })
                             });
                             const data = await res.json();
                             console.log("Resposta do backend:", data);
@@ -3353,6 +3364,11 @@
                             btnAssinar.disabled = false;
                         }
                     };
+
+                    const btnMensal = document.getElementById('btn-assinar-mensal-agora');
+                    const btnAnual = document.getElementById('btn-assinar-anual-agora');
+                    if (btnMensal) btnMensal.onclick = (e) => assinarHandlerTrial(e, 'mensal', btnMensal);
+                    if (btnAnual) btnAnual.onclick = (e) => assinarHandlerTrial(e, 'anual', btnAnual);
 
                     document.getElementById('btn-logout-sub').onclick = async () => {
                         await signOut(auth);
@@ -3400,14 +3416,16 @@
                                 const badge = document.getElementById('status-plano-badge');
                                 const trialText = document.getElementById('trial-info-text');
                                 const dataExp = document.getElementById('data-expiracao-trial');
-                                const btnAssinarSettings = document.getElementById('btn-assinar-settings');
+                                const botoesAssinatura = document.getElementById('botoes-assinatura-settings');
+                                const btnMensalSettings = document.getElementById('btn-assinar-mensal-settings');
+                                const btnAnualSettings = document.getElementById('btn-assinar-anual-settings');
                                 
-                                if (badge && btnAssinarSettings) {
+                                if (badge && botoesAssinatura) {
                                     if (planStatus === 'active') {
                                         badge.textContent = 'Ativo';
                                         badge.className = 'font-bold text-green-500';
                                         trialText.style.display = 'none';
-                                        btnAssinarSettings.style.display = 'none';
+                                        botoesAssinatura.style.display = 'none';
                                         
                                         // Esconde modal de assinatura se estiver visível
                                         const subView = document.getElementById('subscription-view');
@@ -3418,22 +3436,22 @@
                                         badge.className = 'font-bold text-amber-500';
                                         trialText.style.display = 'block';
                                         dataExp.textContent = trialEndsAt.toLocaleDateString('pt-BR');
-                                        btnAssinarSettings.style.display = 'flex';
+                                        botoesAssinatura.style.display = 'flex';
                                         
-                                        btnAssinarSettings.onclick = async (e) => {
+                                        const assinarHandlerSettings = async (e, planType, btn) => {
                                             e.preventDefault();
-                                            console.log("Botão Assinar (Config) Clicado");
-                                            const btnText = btnAssinarSettings.querySelector('.btn-text');
-                                            const loader = btnAssinarSettings.querySelector('.loader');
+                                            console.log("Botão Assinar (Config) Clicado:", planType);
+                                            const btnText = btn.querySelector('.btn-text');
+                                            const loader = btn.querySelector('.loader');
                                             btnText.classList.add('hidden');
                                             loader.classList.remove('hidden');
-                                            btnAssinarSettings.disabled = true;
+                                            btn.disabled = true;
                                             
                                             try {
                                                 console.log("Buscando link de assinatura nas configurações...");
                                                 const res = await fetch('/.netlify/functions/create-subscription', {
                                                     method: 'POST',
-                                                    body: JSON.stringify({ uid: user.uid, email: user.email })
+                                                    body: JSON.stringify({ uid: user.uid, email: user.email, planType: planType })
                                                 });
                                                 const data = await res.json();
                                                 console.log("Resposta do backend (Config):", data);
@@ -3448,9 +3466,12 @@
                                             } finally {
                                                 btnText.classList.remove('hidden');
                                                 loader.classList.add('hidden');
-                                                btnAssinarSettings.disabled = false;
+                                                btn.disabled = false;
                                             }
                                         };
+                                        
+                                        if (btnMensalSettings) btnMensalSettings.onclick = (e) => assinarHandlerSettings(e, 'mensal', btnMensalSettings);
+                                        if (btnAnualSettings) btnAnualSettings.onclick = (e) => assinarHandlerSettings(e, 'anual', btnAnualSettings);
                                     }
                                 }
                             }
