@@ -182,7 +182,7 @@
                 <svg class="w-20 h-20 mx-auto text-amber-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 <h2 class="text-3xl font-bold text-primary mb-2">Período de Teste Expirado</h2>
                 <p class="text-secondary mb-6">O seu período de teste de 31 dias chegou ao fim. Para continuar usando o CMV.IA e ter acesso a todas as funcionalidades de gestão, por favor assine o nosso plano mensal de R$ 25,00.</p>
-                <button id="btn-assinar-agora" class="w-full btn-primary bg-green-600 hover:bg-green-700 py-3 mb-4 flex justify-center items-center">
+                <button type="button" id="btn-assinar-agora" class="w-full btn-primary bg-green-600 hover:bg-green-700 py-3 mb-4 flex justify-center items-center">
                     <span class="btn-text">Assinar Agora (Mercado Pago)</span>
                     <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
                 </button>
@@ -342,7 +342,7 @@
                                             <p class="text-lg font-medium">Status do Plano: <span id="status-plano-badge" class="font-bold text-amber-500">Trial</span></p>
                                             <p id="trial-info-text" class="text-sm text-secondary mt-1">Seu período de teste expira em: <span id="data-expiracao-trial" class="font-bold">--/--/----</span></p>
                                         </div>
-                                        <button id="btn-assinar-settings" class="btn-primary bg-green-600 hover:bg-green-700 flex justify-center items-center">
+                                        <button type="button" id="btn-assinar-settings" class="btn-primary bg-green-600 hover:bg-green-700 flex justify-center items-center">
                                             <span class="btn-text">Assinar Agora (R$ 25,00/mês)</span>
                                             <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
                                         </button>
@@ -3322,7 +3322,9 @@
                     subView.classList.remove('hidden');
                     
                     const btnAssinar = document.getElementById('btn-assinar-agora');
-                    btnAssinar.onclick = async () => {
+                    btnAssinar.onclick = async (e) => {
+                        e.preventDefault();
+                        console.log("Botão Assinar (Trial) Clicado");
                         const btnText = btnAssinar.querySelector('.btn-text');
                         const loader = btnAssinar.querySelector('.loader');
                         btnText.classList.add('hidden');
@@ -3330,19 +3332,21 @@
                         btnAssinar.disabled = true;
                         
                         try {
+                            console.log("Buscando link de assinatura...");
                             const res = await fetch('/.netlify/functions/create-subscription', {
                                 method: 'POST',
                                 body: JSON.stringify({ uid, email })
                             });
                             const data = await res.json();
+                            console.log("Resposta do backend:", data);
                             if (data.init_point) {
                                 window.location.href = data.init_point;
                             } else {
-                                alert("Erro ao gerar link de pagamento.");
+                                alert("Erro ao gerar link de pagamento. Resposta: " + JSON.stringify(data));
                             }
                         } catch (e) {
-                            console.error(e);
-                            alert("Falha na comunicação com o servidor.");
+                            console.error("Erro no fetch (Trial):", e);
+                            alert("Falha na comunicação com o servidor. Verifique se a aplicação está rodando via 'netlify dev'.");
                         } finally {
                             btnText.classList.remove('hidden');
                             loader.classList.add('hidden');
@@ -3362,15 +3366,30 @@
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                let userDocUnsubscribe = null;
 
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
-                        try {
-                            const userDoc = await getDoc(doc(db, 'restaurants', user.uid));
+                        restaurantId = user.uid; // Usamos o UID do user como ID do restaurante
+                        console.log("User signed in with UID:", restaurantId);
+                        document.getElementById('user-email').textContent = user.email;
+                        
+                        // Ouve o documento do restaurante em tempo real
+                        if (userDocUnsubscribe) userDocUnsubscribe();
+                        userDocUnsubscribe = onSnapshot(doc(db, 'restaurants', user.uid), (userDoc) => {
                             if (userDoc.exists()) {
                                 const userData = userDoc.data();
                                 const planStatus = userData.planStatus || 'trial';
-                                const trialEndsAt = userData.trialEndsAt ? userData.trialEndsAt.toDate() : new Date();
+                                
+                                let trialEndsAt = new Date();
+                                if (userData.trialEndsAt) {
+                                    if (typeof userData.trialEndsAt.toDate === 'function') {
+                                        trialEndsAt = userData.trialEndsAt.toDate();
+                                    } else {
+                                        trialEndsAt = new Date(userData.trialEndsAt);
+                                    }
+                                }
+                                
                                 const now = new Date();
                                 
                                 if (planStatus === 'trial' && now > trialEndsAt) {
@@ -3389,12 +3408,21 @@
                                         badge.className = 'font-bold text-green-500';
                                         trialText.style.display = 'none';
                                         btnAssinarSettings.style.display = 'none';
+                                        
+                                        // Esconde modal de assinatura se estiver visível
+                                        const subView = document.getElementById('subscription-view');
+                                        if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
+                                        appContainer.style.display = 'flex';
                                     } else {
                                         badge.textContent = 'Trial (Teste)';
                                         badge.className = 'font-bold text-amber-500';
+                                        trialText.style.display = 'block';
                                         dataExp.textContent = trialEndsAt.toLocaleDateString('pt-BR');
+                                        btnAssinarSettings.style.display = 'flex';
                                         
-                                        btnAssinarSettings.onclick = async () => {
+                                        btnAssinarSettings.onclick = async (e) => {
+                                            e.preventDefault();
+                                            console.log("Botão Assinar (Config) Clicado");
                                             const btnText = btnAssinarSettings.querySelector('.btn-text');
                                             const loader = btnAssinarSettings.querySelector('.loader');
                                             btnText.classList.add('hidden');
@@ -3402,19 +3430,21 @@
                                             btnAssinarSettings.disabled = true;
                                             
                                             try {
+                                                console.log("Buscando link de assinatura nas configurações...");
                                                 const res = await fetch('/.netlify/functions/create-subscription', {
                                                     method: 'POST',
                                                     body: JSON.stringify({ uid: user.uid, email: user.email })
                                                 });
                                                 const data = await res.json();
+                                                console.log("Resposta do backend (Config):", data);
                                                 if (data.init_point) {
                                                     window.location.href = data.init_point;
                                                 } else {
-                                                    alert("Erro ao gerar link de pagamento.");
+                                                    alert("Erro ao gerar link de pagamento. Resposta: " + JSON.stringify(data));
                                                 }
                                             } catch (e) {
-                                                console.error(e);
-                                                alert("Falha na comunicação com o servidor.");
+                                                console.error("Erro no fetch (Config):", e);
+                                                alert("Falha na comunicação com o servidor. Verifique se a aplicação está rodando via 'netlify dev'.");
                                             } finally {
                                                 btnText.classList.remove('hidden');
                                                 loader.classList.add('hidden');
@@ -3424,13 +3454,10 @@
                                     }
                                 }
                             }
-                        } catch (e) {
-                            console.error("Erro ao verificar assinatura:", e);
-                        }
+                        }, (error) => {
+                            console.error("Erro ao ouvir documento do usuário:", error);
+                        });
 
-                        restaurantId = user.uid; // Usamos o UID do user como ID do restaurante
-                        console.log("User signed in with UID:", restaurantId);
-                        document.getElementById('user-email').textContent = user.email;
                         authView.style.display = 'none';
                         const subView = document.getElementById('subscription-view');
                         if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
@@ -3438,6 +3465,10 @@
                         setupRealtimeListeners(); 
                         showView('dashboard');
                     } else {
+                        if (userDocUnsubscribe) {
+                            userDocUnsubscribe();
+                            userDocUnsubscribe = null;
+                        }
                         restaurantId = null;
                         console.log("No user signed in.");
                         authView.style.display = 'flex';
