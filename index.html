@@ -333,6 +333,22 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Assinatura e Pagamento -->
+                            <div>
+                                <h4 class="text-xl font-semibold mb-4 text-blue-700">Assinatura e Pagamento</h4>
+                                <div class="bg-form-bg p-6 rounded-lg border border-border-color">
+                                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                                        <div>
+                                            <p class="text-lg font-medium">Status do Plano: <span id="status-plano-badge" class="font-bold text-amber-500">Trial</span></p>
+                                            <p id="trial-info-text" class="text-sm text-secondary mt-1">Seu período de teste expira em: <span id="data-expiracao-trial" class="font-bold">--/--/----</span></p>
+                                        </div>
+                                        <button id="btn-assinar-settings" class="btn-primary bg-green-600 hover:bg-green-700 flex justify-center items-center">
+                                            <span class="btn-text">Assinar Agora (R$ 25,00/mês)</span>
+                                            <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                             <!-- Gestão de Categorias -->
                             <div>
                                 <h4 class="text-xl font-semibold mb-4 text-blue-700">Categorias</h4>
@@ -3360,6 +3376,52 @@
                                 if (planStatus === 'trial' && now > trialEndsAt) {
                                     showSubscriptionView(user.uid, user.email);
                                     return;
+                                }
+
+                                const badge = document.getElementById('status-plano-badge');
+                                const trialText = document.getElementById('trial-info-text');
+                                const dataExp = document.getElementById('data-expiracao-trial');
+                                const btnAssinarSettings = document.getElementById('btn-assinar-settings');
+                                
+                                if (badge && btnAssinarSettings) {
+                                    if (planStatus === 'active') {
+                                        badge.textContent = 'Ativo';
+                                        badge.className = 'font-bold text-green-500';
+                                        trialText.style.display = 'none';
+                                        btnAssinarSettings.style.display = 'none';
+                                    } else {
+                                        badge.textContent = 'Trial (Teste)';
+                                        badge.className = 'font-bold text-amber-500';
+                                        dataExp.textContent = trialEndsAt.toLocaleDateString('pt-BR');
+                                        
+                                        btnAssinarSettings.onclick = async () => {
+                                            const btnText = btnAssinarSettings.querySelector('.btn-text');
+                                            const loader = btnAssinarSettings.querySelector('.loader');
+                                            btnText.classList.add('hidden');
+                                            loader.classList.remove('hidden');
+                                            btnAssinarSettings.disabled = true;
+                                            
+                                            try {
+                                                const res = await fetch('/.netlify/functions/create-subscription', {
+                                                    method: 'POST',
+                                                    body: JSON.stringify({ uid: user.uid, email: user.email })
+                                                });
+                                                const data = await res.json();
+                                                if (data.init_point) {
+                                                    window.location.href = data.init_point;
+                                                } else {
+                                                    alert("Erro ao gerar link de pagamento.");
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert("Falha na comunicação com o servidor.");
+                                            } finally {
+                                                btnText.classList.remove('hidden');
+                                                loader.classList.add('hidden');
+                                                btnAssinarSettings.disabled = false;
+                                            }
+                                        };
+                                    }
                                 }
                             }
                         } catch (e) {
