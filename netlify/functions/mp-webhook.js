@@ -86,7 +86,7 @@ exports.handler = async function(event, context) {
                 // Descobrir quantos dias adicionar baseado no valor (transaction_amount)
                 const amount = data.transaction_amount || 25;
                 let addedDays = 31; // Padrão mensal
-                if (amount >= 140) {
+                if (amount >= 90) {
                     addedDays = 365; // Anual
                 }
 

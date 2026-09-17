@@ -20,7 +20,7 @@ exports.handler = async function(event, context) {
         }
 
         const title = planType === 'anual' ? "Acesso Anual CMV.IA" : "Acesso Mensal CMV.IA";
-        const price = planType === 'anual' ? 150.00 : 25.00;
+        const price = planType === 'anual' ? 99.00 : 25.00;
 
         const response = await axios.post("https://api.mercadopago.com/checkout/preferences", {
             items: [
