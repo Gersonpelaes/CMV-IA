@@ -339,6 +339,20 @@
                                     </form>
                                 </div>
                             </div>
+                            <!-- Acesso de Equipe -->
+                            <div>
+                                <h4 class="text-xl font-semibold mb-4 text-blue-700">Acesso de Equipe</h4>
+                                <div class="bg-form-bg p-6 rounded-lg border border-border-color">
+                                    <p class="mb-4 text-sm text-secondary">Gere um link mágico para compartilhar o acesso ao sistema com seus colaboradores sem precisar fornecer sua senha.</p>
+                                    <div class="flex gap-2 mb-2">
+                                        <button type="button" id="btn-gerar-link-colaborador" class="btn-primary bg-indigo-600 hover:bg-indigo-700 flex justify-center items-center">
+                                            <span class="btn-text">Gerar Link Compartilhável</span>
+                                            <span class="loader hidden ml-2 border-white border-t-transparent w-4 h-4 border-2"></span>
+                                        </button>
+                                    </div>
+                                    <input type="text" id="input-link-colaborador" readonly class="form-input w-full mt-2 hidden bg-gray-100" placeholder="O link aparecerá aqui...">
+                                </div>
+                            </div>
                             <!-- Assinatura e Pagamento -->
                             <div>
                                 <h4 class="text-xl font-semibold mb-4 text-blue-700">Assinatura e Pagamento</h4>
@@ -831,7 +845,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- FIREBASE SETUP ---
@@ -3384,6 +3398,31 @@
                 auth = getAuth(app);
                 let userDocUnsubscribe = null;
 
+                // --- LÓGICA DO LINK MÁGICO DE COLABORADOR ---
+                const urlParams = new URLSearchParams(window.location.search);
+                const collab = urlParams.get('collab');
+                const rId = urlParams.get('restaurantId');
+                const sKey = urlParams.get('shareKey');
+                
+                if (collab && rId && sKey) {
+                    try {
+                        const res = await fetch('/.netlify/functions/login-collaborator', {
+                            method: 'POST',
+                            body: JSON.stringify({ restaurantId: rId, shareKey: sKey })
+                        });
+                        const data = await res.json();
+                        if (data.token) {
+                            await signInWithCustomToken(auth, data.token);
+                            window.history.replaceState({}, document.title, window.location.pathname); // limpa a URL
+                        } else {
+                            alert("Link inválido ou expirado: " + (data.error || "Erro desconhecido"));
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert("Erro ao fazer login como colaborador.");
+                    }
+                }
+
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         restaurantId = user.uid; // Usamos o UID do user como ID do restaurante
@@ -3419,6 +3458,43 @@
                                 const botoesAssinatura = document.getElementById('botoes-assinatura-settings');
                                 const btnMensalSettings = document.getElementById('btn-assinar-mensal-settings');
                                 const btnAnualSettings = document.getElementById('btn-assinar-anual-settings');
+                                
+                                // Configurando o botão de colaborador
+                                const btnGerarLink = document.getElementById('btn-gerar-link-colaborador');
+                                const inputLink = document.getElementById('input-link-colaborador');
+                                if (btnGerarLink && inputLink) {
+                                    btnGerarLink.onclick = async () => {
+                                        const btnText = btnGerarLink.querySelector('.btn-text');
+                                        const loader = btnGerarLink.querySelector('.loader');
+                                        btnText.classList.add('hidden');
+                                        loader.classList.remove('hidden');
+                                        btnGerarLink.disabled = true;
+                                        
+                                        try {
+                                            const newKey = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2));
+                                            await updateDoc(doc(db, 'restaurants', user.uid), { shareKey: newKey });
+                                            
+                                            const baseUrl = window.location.origin + window.location.pathname;
+                                            const magicLink = `${baseUrl}?collab=true&restaurantId=${user.uid}&shareKey=${newKey}`;
+                                            
+                                            inputLink.value = magicLink;
+                                            inputLink.classList.remove('hidden');
+                                            inputLink.select();
+                                            document.execCommand('copy');
+                                            
+                                            const originalText = btnText.textContent;
+                                            btnText.textContent = "Link Gerado e Copiado!";
+                                            setTimeout(() => btnText.textContent = originalText, 3000);
+                                        } catch (e) {
+                                            console.error("Erro ao gerar link de colaborador", e);
+                                            alert("Erro ao gerar o link. Tente novamente.");
+                                        } finally {
+                                            btnText.classList.remove('hidden');
+                                            loader.classList.add('hidden');
+                                            btnGerarLink.disabled = false;
+                                        }
+                                    };
+                                }
                                 
                                 if (badge && botoesAssinatura) {
                                     if (planStatus === 'active') {
