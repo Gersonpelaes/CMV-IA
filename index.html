@@ -172,6 +172,7 @@
             }
         }
     </style>
+    <script src="taco-data.js"></script>
 </head>
 <body class="bg-primary text-primary">
 
@@ -496,6 +497,14 @@
                                         <div><label for="unidade-base" class="block text-sm font-medium text-secondary">Un. Base</label><input type="text" id="unidade-base" placeholder="kg" required class="mt-1 form-input"></div>
                                         <div><label for="rendimento-ingrediente" class="block text-sm font-medium text-secondary">Rend. (%)</label><input type="number" step="1" id="rendimento-ingrediente" value="100" min="1" max="100" required class="mt-1 form-input"></div>
                                     </div>
+                                    <h4 class="text-sm font-semibold mt-2 text-blue-600">Nutrição (por 100g)</h4>
+                                    <div class="grid grid-cols-4 gap-2">
+                                        <div><label class="block text-xs text-secondary">Kcal</label><input type="number" step="0.1" id="ing-kcal" class="mt-1 form-input text-xs px-2" placeholder="Auto"></div>
+                                        <div><label class="block text-xs text-secondary">Carb(g)</label><input type="number" step="0.1" id="ing-carb" class="mt-1 form-input text-xs px-2" placeholder="Auto"></div>
+                                        <div><label class="block text-xs text-secondary">Prot(g)</label><input type="number" step="0.1" id="ing-prot" class="mt-1 form-input text-xs px-2" placeholder="Auto"></div>
+                                        <div><label class="block text-xs text-secondary">Gord(g)</label><input type="number" step="0.1" id="ing-gord" class="mt-1 form-input text-xs px-2" placeholder="Auto"></div>
+                                    </div>
+                                    <p class="text-xs text-gray-400 italic mt-0" id="ing-taco-status">Deixe em branco para sincronização automática (TACO).</p>
                                     <button type="submit" class="w-full btn-primary">Salvar Ingrediente</button>
                                 </form>
                             </div>
@@ -503,7 +512,11 @@
                                  <h3 class="text-xl font-semibold mb-4">Ingredientes Cadastrados</h3>
                                  <div class="flex flex-col md:flex-row gap-4 mb-4">
                                     <input type="text" id="search-ingrediente" class="form-input flex-grow" placeholder="Buscar ingrediente...">
-                                    <select id="filter-ingrediente-categoria" class="form-select md:w-1/3"></select>
+                                    <select id="filter-ingrediente-categoria" class="form-select md:w-1/4"></select>
+                                    <button type="button" id="btn-sync-taco" class="btn-primary md:w-auto bg-green-600 hover:bg-green-700 text-xs px-2 py-2 flex items-center justify-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                        Auto-Nutrição
+                                    </button>
                                  </div>
                                  <div class="overflow-x-auto">
                                     <div id="lista-ingredientes" class="space-y-4 max-h-96 overflow-y-auto pr-2"></div>
@@ -637,6 +650,29 @@
                                     </div>
                                     <div class="flex justify-between items-center pt-2 border-t border-green-300"><span class="font-semibold text-green-700">Preço de Venda Sugerido:</span><span id="preco-sugerido" class="text-2xl font-bold text-green-600">R$ 0.00</span></div>
                                     <button type="button" id="btn-salvar-prato" class="w-full mt-4 btn-primary bg-green-600 hover:bg-green-700">Salvar Prato Final</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Painel Nutricional -->
+                            <div class="mt-4 bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                                <h4 class="font-semibold text-lg mb-3 text-yellow-800 dark:text-yellow-300">Tabela Nutricional (por porção)</h4>
+                                <div class="grid grid-cols-4 gap-4 text-center">
+                                    <div class="bg-white dark:bg-gray-800 p-2 rounded shadow-sm border border-border-color">
+                                        <div class="text-xs text-secondary mb-1">Calorias</div>
+                                        <div id="ficha-nutri-kcal" class="font-bold text-yellow-700">0 kcal</div>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-800 p-2 rounded shadow-sm border border-border-color">
+                                        <div class="text-xs text-secondary mb-1">Carboidratos</div>
+                                        <div id="ficha-nutri-carb" class="font-bold">0 g</div>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-800 p-2 rounded shadow-sm border border-border-color">
+                                        <div class="text-xs text-secondary mb-1">Proteínas</div>
+                                        <div id="ficha-nutri-prot" class="font-bold">0 g</div>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-800 p-2 rounded shadow-sm border border-border-color">
+                                        <div class="text-xs text-secondary mb-1">Gorduras</div>
+                                        <div id="ficha-nutri-gord" class="font-bold">0 g</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1547,9 +1583,10 @@
                         const li = document.createElement('li');
                         li.className = 'bg-form-bg p-3 rounded-lg flex justify-between items-center border border-border-color cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors';
                         li.dataset.id = ing.id;
+                        const nutriBadge = ing.kcal ? `<span class="bg-green-100 text-green-700 text-[10px] px-1 py-0.5 rounded font-medium ml-2" title="${ing.tacoMatch || 'Nutrição Manual'}">${ing.kcal} Kcal/100g</span>` : `<span class="bg-gray-100 text-gray-500 text-[10px] px-1 py-0.5 rounded font-medium ml-2">Sem Kcal</span>`;
                         li.innerHTML = `
                             <div>
-                                <span class="font-semibold">${ing.nome}</span>
+                                <span class="font-semibold">${ing.nome}</span>${nutriBadge}
                                 <div class="text-xs text-secondary">Compra: ${ing.unidadeCompraQtd} ${ing.unidadeBase} por R$ ${ing.precoCompra.toFixed(2)}</div>
                             </div>
                             <div class="text-right">
@@ -1752,10 +1789,21 @@
                 // Limpar campos
                 document.getElementById('etq-responsavel').value = '';
                 document.getElementById('etq-alerg-outros').value = '';
-                document.getElementById('etq-nutri-kcal').value = '';
-                document.getElementById('etq-nutri-carb').value = '';
-                document.getElementById('etq-nutri-prot').value = '';
-                document.getElementById('etq-nutri-gord').value = '';
+                // Preencher com a Nutrição Automática da Ficha se existir
+                let numPorcoes = (ficha.header.rendimentoReceitaKg * 1000) / ficha.header.tamanhoPorcaoG;
+                if(!numPorcoes || numPorcoes <= 0 || isNaN(numPorcoes)) numPorcoes = 1;
+
+                if(ficha.kcalTotal) {
+                    document.getElementById('etq-nutri-kcal').value = Math.round(ficha.kcalTotal / numPorcoes);
+                    document.getElementById('etq-nutri-carb').value = (ficha.carbTotal / numPorcoes).toFixed(1);
+                    document.getElementById('etq-nutri-prot').value = (ficha.protTotal / numPorcoes).toFixed(1);
+                    document.getElementById('etq-nutri-gord').value = (ficha.gordTotal / numPorcoes).toFixed(1);
+                } else {
+                    document.getElementById('etq-nutri-kcal').value = '';
+                    document.getElementById('etq-nutri-carb').value = '';
+                    document.getElementById('etq-nutri-prot').value = '';
+                    document.getElementById('etq-nutri-gord').value = '';
+                }
                 document.querySelectorAll('input[name="etq-alerg"]').forEach(cb => cb.checked = false);
 
                 etiquetaModal.classList.remove('hidden');
@@ -2295,6 +2343,32 @@
                 const markup = parseFloat(inputMarkupPrato.value) || 0;
                 const precoSugerido = custoPorPorcao * markup;
                 precoSugeridoSpan.textContent = `R$ ${precoSugerido.toFixed(2)}`;
+
+                // --- Lógica Nutricional ---
+                const kcalTotal = fichaAtual.componentes.reduce((acc, item) => acc + (item.kcal || 0), 0);
+                const carbTotal = fichaAtual.componentes.reduce((acc, item) => acc + (item.carb || 0), 0);
+                const protTotal = fichaAtual.componentes.reduce((acc, item) => acc + (item.prot || 0), 0);
+                const gordTotal = fichaAtual.componentes.reduce((acc, item) => acc + (item.gord || 0), 0);
+
+                // Salvar os totais na fichaAtual
+                fichaAtual.kcalTotal = kcalTotal;
+                fichaAtual.carbTotal = carbTotal;
+                fichaAtual.protTotal = protTotal;
+                fichaAtual.gordTotal = gordTotal;
+
+                // Calcular por porção
+                let kcalPorcao = 0, carbPorcao = 0, protPorcao = 0, gordPorcao = 0;
+                if (numeroPorcoes > 0) {
+                    kcalPorcao = kcalTotal / numeroPorcoes;
+                    carbPorcao = carbTotal / numeroPorcoes;
+                    protPorcao = protTotal / numeroPorcoes;
+                    gordPorcao = gordTotal / numeroPorcoes;
+                }
+
+                document.getElementById('ficha-nutri-kcal').textContent = `${Math.round(kcalPorcao)} kcal`;
+                document.getElementById('ficha-nutri-carb').textContent = `${carbPorcao.toFixed(1)} g`;
+                document.getElementById('ficha-nutri-prot').textContent = `${protPorcao.toFixed(1)} g`;
+                document.getElementById('ficha-nutri-gord').textContent = `${gordPorcao.toFixed(1)} g`;
             }
             
             function recalcularCustoFicha(ficha, listaIngredientes, listaReceitas = receitasSalvas) {
@@ -2438,7 +2512,11 @@
                     type: tipo,
                     header: header,
                     componentes: fichaAtual.componentes,
-                    custoTotal
+                    custoTotal,
+                    kcalTotal: fichaAtual.kcalTotal || 0,
+                    carbTotal: fichaAtual.carbTotal || 0,
+                    protTotal: fichaAtual.protTotal || 0,
+                    gordTotal: fichaAtual.gordTotal || 0
                 };
 
                 if (fichaAtual.id) {
@@ -2753,6 +2831,30 @@
                     rendimento: parseFloat(form['rendimento-ingrediente'].value), 
                     custoBase: precoCompra / unidadeCompraQtd
                 };
+
+                // Lógica de Nutrição
+                let kcal = document.getElementById('ing-kcal').value;
+                let carb = document.getElementById('ing-carb').value;
+                let prot = document.getElementById('ing-prot').value;
+                let gord = document.getElementById('ing-gord').value;
+                
+                if(!kcal && !carb && !prot && !gord && window.autoMapNutrition) {
+                    const match = window.autoMapNutrition(newIngredient.nome);
+                    if(match) {
+                        newIngredient.kcal = match.kcal;
+                        newIngredient.carb = match.carb;
+                        newIngredient.prot = match.prot;
+                        newIngredient.gord = match.gord;
+                        newIngredient.tacoMatch = match.tacoMatch;
+                    }
+                } else {
+                    newIngredient.kcal = kcal ? parseFloat(kcal) : 0;
+                    newIngredient.carb = carb ? parseFloat(carb) : 0;
+                    newIngredient.prot = prot ? parseFloat(prot) : 0;
+                    newIngredient.gord = gord ? parseFloat(gord) : 0;
+                    newIngredient.tacoMatch = "Manual";
+                }
+
                 try {
                     await addDoc(collection(db, getCollectionPath('ingredients')), newIngredient);
                     alert('Ingrediente salvo com sucesso!');
@@ -2799,6 +2901,20 @@
                     rendimento: parseFloat(form['inline-rendimento-ingrediente'].value), 
                     custoBase: precoCompra / unidadeCompraQtd
                 };
+
+                if(window.autoMapNutrition) {
+                    const match = window.autoMapNutrition(newIngredient.nome);
+                    if(match) {
+                        newIngredient.kcal = match.kcal;
+                        newIngredient.carb = match.carb;
+                        newIngredient.prot = match.prot;
+                        newIngredient.gord = match.gord;
+                        newIngredient.tacoMatch = match.tacoMatch;
+                    } else {
+                        newIngredient.kcal = 0; newIngredient.carb = 0; newIngredient.prot = 0; newIngredient.gord = 0;
+                        newIngredient.tacoMatch = "Não localizado";
+                    }
+                }
                 
                 button.disabled = true;
                 button.textContent = 'Salvando...';
@@ -2880,11 +2996,39 @@
                     const ing = ingredientes.find(i => i.id == id);
                     const fatorCorrecao = parseFloat(fatorCorrecaoOverrideInput.value);
                     const qtdeBruta = qtdeLiquida * fatorCorrecao;
-                    itemParaFicha = { type: 'ing', nome: ing.nome, unidade: ing.unidadeBase, qtdeLiquida, fatorCorrecao, qtdeBruta, custoUnitario: ing.custoBase, custoTotal: qtdeBruta * ing.custoBase };
+                    
+                    // Lógica Nutricional (Valores estão em /100g, convertemos com base no peso/volume. Assumimos unidBase como kg/L aproximado ou g/ml. Se base for 'kg' ou 'l', multiplicamos bruto por 10)
+                    let fatorConversao = 1; // se unidadeBase for g ou ml, qtdeBruta * 1
+                    if(ing.unidadeBase.toLowerCase() === 'kg' || ing.unidadeBase.toLowerCase() === 'l' || ing.unidadeBase.toLowerCase() === 'litro') {
+                        fatorConversao = 10; // (qtdeBruta * 1000g) / 100g = qtdeBruta * 10
+                    } else if(ing.unidadeBase.toLowerCase() === 'g' || ing.unidadeBase.toLowerCase() === 'ml') {
+                        fatorConversao = 0.01; // qtdeBruta / 100g
+                    }
+                    
+                    itemParaFicha = { 
+                        type: 'ing', id: ing.id, nome: ing.nome, unidade: ing.unidadeBase, 
+                        qtdeLiquida, fatorCorrecao, qtdeBruta, 
+                        custoUnitario: ing.custoBase, custoTotal: qtdeBruta * ing.custoBase,
+                        kcal: (ing.kcal || 0) * (qtdeBruta * fatorConversao),
+                        carb: (ing.carb || 0) * (qtdeBruta * fatorConversao),
+                        prot: (ing.prot || 0) * (qtdeBruta * fatorConversao),
+                        gord: (ing.gord || 0) * (qtdeBruta * fatorConversao)
+                    };
                 } else if (type === 'rec') {
                     const rec = receitasSalvas.find(r => r.id == id);
                     const custoUnitarioRec = rec.custoTotal / (rec.header.rendimentoReceitaKg || 1);
-                    itemParaFicha = { type: 'rec', nome: rec.header.descricaoProduto, unidade: 'kg', qtdeLiquida, fatorCorrecao: 1.0, qtdeBruta: qtdeLiquida, custoUnitario: custoUnitarioRec, custoTotal: qtdeLiquida * custoUnitarioRec };
+                    // Nutrição da sub-receita
+                    let fatorConversao = 10; // Receitas são sempre lançadas em 'kg' (Rendimento Receita Kg)
+                    
+                    itemParaFicha = { 
+                        type: 'rec', id: rec.id, nome: rec.header.descricaoProduto, unidade: 'kg', 
+                        qtdeLiquida, fatorCorrecao: 1.0, qtdeBruta: qtdeLiquida, 
+                        custoUnitario: custoUnitarioRec, custoTotal: qtdeLiquida * custoUnitarioRec,
+                        kcal: (rec.kcalTotal || 0) * (qtdeLiquida / (rec.header.rendimentoReceitaKg || 1)),
+                        carb: (rec.carbTotal || 0) * (qtdeLiquida / (rec.header.rendimentoReceitaKg || 1)),
+                        prot: (rec.protTotal || 0) * (qtdeLiquida / (rec.header.rendimentoReceitaKg || 1)),
+                        gord: (rec.gordTotal || 0) * (qtdeLiquida / (rec.header.rendimentoReceitaKg || 1))
+                    };
                 }
                 fichaAtual.componentes.push(itemParaFicha);
                 renderizarFichaAtual();
@@ -3143,6 +3287,40 @@
                     }, 3000); 
                 }
             });
+
+            const btnSyncTaco = document.getElementById('btn-sync-taco');
+            if(btnSyncTaco && window.autoMapNutrition) {
+                btnSyncTaco.addEventListener('click', async () => {
+                    const confirmar = confirm("Isso irá analisar todos os seus ingredientes salvos e tentar vinculá-los automaticamente com a Tabela Nutricional (TACO). Ingredientes que já possuem nutrição manual NÃO serão sobrescritos. Deseja continuar?");
+                    if(!confirmar) return;
+
+                    btnSyncTaco.disabled = true;
+                    btnSyncTaco.textContent = "Sincronizando...";
+
+                    let atualizados = 0;
+                    for(const ing of ingredientes) {
+                        // Só atualiza se não tiver kcal (ou seja 0) ou se não tiver sido modificado manualmente
+                        if(!ing.kcal && !ing.carb && !ing.prot && !ing.gord) {
+                            const match = window.autoMapNutrition(ing.nome);
+                            if(match) {
+                                const ingredientRef = doc(db, getCollectionPath('ingredients'), ing.id);
+                                await updateDoc(ingredientRef, {
+                                    kcal: match.kcal,
+                                    carb: match.carb,
+                                    prot: match.prot,
+                                    gord: match.gord,
+                                    tacoMatch: match.tacoMatch
+                                });
+                                atualizados++;
+                            }
+                        }
+                    }
+
+                    alert(`Sincronização concluída! ${atualizados} ingredientes foram vinculados com sucesso à base TACO.`);
+                    btnSyncTaco.disabled = false;
+                    btnSyncTaco.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Auto-Nutrição`;
+                });
+            }
 
             // --- LÓGICA DE IMPORTAÇÃO DE FICHAS (NOVO) ---
             async function callGeminiForRecipeImport() {
