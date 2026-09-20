@@ -138,8 +138,15 @@
 
         /* CSS Impressão Etiqueta 60x40mm */
         @media print {
-            body * {
-                visibility: hidden;
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 40mm !important;
+                width: 60mm !important;
+                overflow: hidden !important;
+            }
+            body > *:not(#print-etiqueta-container) {
+                display: none !important;
             }
             #print-etiqueta-container, #print-etiqueta-container * {
                 visibility: visible;
