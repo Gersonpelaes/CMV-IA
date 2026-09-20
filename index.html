@@ -2585,6 +2585,50 @@
                 doc.text(splitPreparo, 14, finalY + 16);
                 finalY = finalY + 16 + (splitPreparo.length * 4);
 
+                // --- Tabela Nutricional (Por Porção) ---
+                // Calcula on-the-fly caso seja uma ficha antiga que não tenha salvo kcalTotal
+                const currentKcalTotal = ficha.kcalTotal || ficha.componentes.reduce((acc, item) => acc + (item.kcal || 0), 0);
+                const currentCarbTotal = ficha.carbTotal || ficha.componentes.reduce((acc, item) => acc + (item.carb || 0), 0);
+                const currentProtTotal = ficha.protTotal || ficha.componentes.reduce((acc, item) => acc + (item.prot || 0), 0);
+                const currentGordTotal = ficha.gordTotal || ficha.componentes.reduce((acc, item) => acc + (item.gord || 0), 0);
+
+                if (currentKcalTotal > 0) {
+                    let numPorcoes = (ficha.header.rendimentoReceitaKg * 1000) / ficha.header.tamanhoPorcaoG;
+                    if(!numPorcoes || numPorcoes <= 0 || isNaN(numPorcoes)) numPorcoes = 1;
+                    
+                    const kcal = Math.round(currentKcalTotal / numPorcoes);
+                    const carb = (currentCarbTotal / numPorcoes).toFixed(1);
+                    const prot = (currentProtTotal / numPorcoes).toFixed(1);
+                    const gord = (currentGordTotal / numPorcoes).toFixed(1);
+
+                    if (finalY > 250) {
+                        doc.addPage();
+                        finalY = 20;
+                    }
+
+                    doc.setFontSize(14);
+                    doc.text("Informação Nutricional (Porção)", 14, finalY + 10);
+                    
+                    const nutriData = [
+                        ["Calorias (Kcal)", `${kcal} kcal`],
+                        ["Carboidratos", `${carb} g`],
+                        ["Proteínas", `${prot} g`],
+                        ["Gorduras Totais", `${gord} g`]
+                    ];
+                    
+                    doc.autoTable({
+                        startY: finalY + 14,
+                        body: nutriData,
+                        theme: 'grid',
+                        styles: { fontSize: 10, cellPadding: 2 },
+                        columnStyles: { 0: { fontStyle: 'bold', fillColor: [240, 240, 240], width: 60 } },
+                        margin: { left: 14 },
+                        tableWidth: 100
+                    });
+                    
+                    finalY = doc.lastAutoTable.finalY;
+                }
+
                 if (incluirCustos) {
                     doc.setFontSize(14);
                     doc.text("Resumo de Custos:", 14, finalY + 10);
