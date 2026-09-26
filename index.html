@@ -172,8 +172,20 @@
             }
         }
     </style>
+    <link rel="manifest" href="./manifest.json">
     <script src="taco-data.js"></script>
     <script src="smart-ingredients.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(registration => {
+                    console.log('SW registrado com sucesso: ', registration.scope);
+                }).catch(err => {
+                    console.log('Erro ao registrar SW: ', err);
+                });
+            });
+        }
+    </script>
 </head>
 <body class="bg-primary text-primary">
 
@@ -1137,7 +1149,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updatePassword, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, doc, setDoc, addDoc, onSnapshot, collection, query, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- FIREBASE SETUP ---
         let db, auth, restaurantId;
@@ -4181,7 +4193,9 @@
             // --- INICIALIZAÇÃO DO FIREBASE ---
             try {
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
+                db = initializeFirestore(app, {
+                    localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+                });
                 auth = getAuth(app);
                 let userDocUnsubscribe = null;
 
