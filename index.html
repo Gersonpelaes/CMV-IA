@@ -200,6 +200,16 @@
                      <div><label for="register-restaurant" class="block text-sm font-medium text-secondary">Nome do Restaurante</label><input type="text" id="register-restaurant" required class="mt-1 form-input"></div>
                     <div><label for="register-email" class="block text-sm font-medium text-secondary">Email</label><input type="email" id="register-email" required class="mt-1 form-input"></div>
                     <div><label for="register-password" class="block text-sm font-medium text-secondary">Palavra-passe</label><input type="password" id="register-password" required class="mt-1 form-input"></div>
+
+                    <div class="flex items-start mt-4">
+                        <div class="flex items-center h-5">
+                            <input id="terms-checkbox" type="checkbox" required class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300">
+                        </div>
+                        <label for="terms-checkbox" class="ml-2 text-sm font-medium text-secondary">
+                            Li e concordo com os <a href="#" id="open-terms-modal" class="text-blue-600 hover:underline">Termos de Uso</a>.
+                        </label>
+                    </div>
+
                      <p id="register-error" class="text-red-500 text-sm hidden"></p>
                     <div><button type="submit" class="w-full btn-primary flex justify-center items-center">
                         <span class="btn-text">Criar Conta</span>
@@ -1034,6 +1044,82 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal de Termos de Uso -->
+    <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+        <div class="card p-6 w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                <h3 class="text-xl font-bold">Termos de Uso e Política de Privacidade</h3>
+                <button id="btn-close-terms" class="text-secondary hover:text-primary">&times;</button>
+            </div>
+            
+            <div class="flex-grow overflow-y-auto mt-2 pr-2 text-sm text-secondary space-y-4">
+                <h4 class="font-semibold text-primary">1. Introdução</h4>
+                <p>Estes Termos de Uso regulam o acesso e a utilização do web app CMV.IA. Ao criar uma conta e/ou utilizar a plataforma, você declara que leu, compreendeu e concorda com todas as condições abaixo.</p>
+
+                <h4 class="font-semibold text-primary">2. Definição do serviço</h4>
+                <p>A CMV.IA é um software como serviço (SaaS) acessado pelo navegador, voltado à gestão gastronômica de pequenos e médios negócios do food service.</p>
+
+                <h4 class="font-semibold text-primary">3. Natureza do serviço</h4>
+                <p>A CMV.IA é uma ferramenta de apoio à gestão e tomada de decisão. Ela não substitui contador, consultor financeiro, consultor jurídico, sistema fiscal, sistema completo de estoque, PDV ou auditoria. As funcionalidades incluem fichas técnicas, custos, CMV, precificação, custos fixos e variáveis, DRE, importação de planilhas, histórico de preços e indicadores para decisão.</p>
+
+                <h4 class="font-semibold text-primary">4. Cadastro e acesso</h4>
+                <p>Para utilizar a CMV.IA é necessário criar uma conta com dados verdadeiros e atualizados. Você é responsável por manter a confidencialidade da sua senha e por toda atividade realizada em sua conta.</p>
+
+                <h4 class="font-semibold text-primary">5. E-mail de compra</h4>
+                <p>Quando o acesso for adquirido por checkout externo, o usuário deve se cadastrar utilizando o mesmo e-mail informado na compra para que a assinatura seja corretamente vinculada à conta.</p>
+
+                <h4 class="font-semibold text-primary">6. Licença de uso</h4>
+                <p>A CMV.IA concede ao usuário uma licença pessoal, não exclusiva, intransferível e revogável para uso do app durante a vigência da assinatura, de acordo com estes Termos.</p>
+
+                <h4 class="font-semibold text-primary">7. Planos e pagamentos</h4>
+                <p>Os planos, valores e formas de pagamento estão descritos no momento da contratação. Pagamentos com cartão são processados por plataformas terceiras de pagamento.</p>
+
+                <h4 class="font-semibold text-primary">8. Cancelamento e reembolso</h4>
+                <p>Cancelamentos e reembolsos seguem as regras do plano contratado, a legislação aplicável e/ou as políticas da plataforma de pagamento utilizada. A CMV.IA não oferece garantia ou prazo fixo de reembolso fora dessas regras.</p>
+
+                <h4 class="font-semibold text-primary">9. Responsabilidade pelos dados inseridos</h4>
+                <p>Todos os dados inseridos no app (insumos, receitas, custos, faturamento etc.) são de inteira responsabilidade do usuário. A CMV.IA não verifica nem audita esses dados.</p>
+
+                <h4 class="font-semibold text-primary">10. Limitação de resultados financeiros</h4>
+                <p>A qualidade dos indicadores depende diretamente da qualidade dos dados inseridos. A CMV.IA não garante lucro, aumento de faturamento, redução automática de custos ou qualquer resultado financeiro específico. Trabalhamos com conceitos de margem estimada, visão de resultado, clareza financeira, indicadores para decisão, precificação com mais segurança e custo estimado por produto.</p>
+
+                <h4 class="font-semibold text-primary">11. Uso adequado</h4>
+                <p>Você concorda em não usar a plataforma para atividades ilícitas, para tentar acessar contas de terceiros, fazer engenharia reversa, sobrecarregar o serviço ou violar direitos de outros usuários ou da CMV.IA.</p>
+
+                <h4 class="font-semibold text-primary">12. Importação de arquivos</h4>
+                <p>Ao importar arquivos CSV/XLSX, o usuário garante que possui os direitos sobre o conteúdo e que ele está livre de vírus ou códigos maliciosos.</p>
+
+                <h4 class="font-semibold text-primary">13. Disponibilidade</h4>
+                <p>Buscamos manter o serviço disponível de forma contínua, mas podem ocorrer interrupções por manutenção, atualizações, falhas técnicas ou eventos fora do nosso controle.</p>
+
+                <h4 class="font-semibold text-primary">14. Atualizações</h4>
+                <p>A CMV.IA pode ser atualizada a qualquer momento com novas funcionalidades, melhorias e correções. Recursos podem ser modificados ou descontinuados.</p>
+
+                <h4 class="font-semibold text-primary">15. Suporte</h4>
+                <p>O suporte é prestado pelos canais oficiais informados no app, em horário comercial. Buscamos responder no menor tempo possível.</p>
+
+                <h4 class="font-semibold text-primary">16. Propriedade intelectual</h4>
+                <p>Todo o software, marca, identidade visual, conteúdos, layouts e funcionalidades são de propriedade da CMV.IA, protegidos por lei. É proibida a reprodução, distribuição ou modificação sem autorização.</p>
+
+                <h4 class="font-semibold text-primary">17. Conteúdo do usuário</h4>
+                <p>O conteúdo inserido pelo usuário continua sendo de sua propriedade. O usuário concede à CMV.IA uma licença limitada apenas para armazenar, processar e exibir esses dados dentro do próprio app, no contexto da prestação do serviço.</p>
+
+                <h4 class="font-semibold text-primary">18. Suspensão ou encerramento</h4>
+                <p>A CMV.IA pode suspender ou encerrar contas em caso de descumprimento destes Termos, fraude, uso indevido ou inadimplência.</p>
+
+                <h4 class="font-semibold text-primary">19. Limitação de responsabilidade</h4>
+                <p>Na máxima extensão permitida em lei, a CMV.IA não se responsabiliza por danos indiretos, lucros cessantes ou perdas decorrentes de decisões tomadas com base nos relatórios e indicadores do app. As decisões de gestão são exclusivas do usuário.</p>
+
+                <h4 class="font-semibold text-primary">20. Lei aplicável</h4>
+                <p>Estes Termos são regidos pelas leis da República Federativa do Brasil.</p>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-border-color text-center">
+                <button type="button" id="btn-accept-terms" class="btn-primary w-full bg-blue-600 hover:bg-blue-700">Fechar</button>
+            </div>
         </div>
     </div>
 
@@ -3778,6 +3864,22 @@
                 e.preventDefault();
                 registerForm.classList.add('hidden');
                 loginForm.classList.remove('hidden');
+            });
+
+            // Lógica do Modal de Termos
+            const termsModal = document.getElementById('terms-modal');
+            document.getElementById('open-terms-modal').addEventListener('click', (e) => {
+                e.preventDefault();
+                termsModal.classList.remove('hidden');
+                termsModal.classList.add('flex');
+            });
+            document.getElementById('btn-close-terms').addEventListener('click', () => {
+                termsModal.classList.add('hidden');
+                termsModal.classList.remove('flex');
+            });
+            document.getElementById('btn-accept-terms').addEventListener('click', () => {
+                termsModal.classList.add('hidden');
+                termsModal.classList.remove('flex');
             });
 
             loginForm.addEventListener('submit', async (e) => {
