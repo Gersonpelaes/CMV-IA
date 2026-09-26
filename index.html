@@ -173,6 +173,7 @@
         }
     </style>
     <script src="taco-data.js"></script>
+    <script src="smart-ingredients.js"></script>
 </head>
 <body class="bg-primary text-primary">
 
@@ -483,6 +484,10 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-border-color pb-4 gap-4">
                             <h3 class="text-2xl font-bold">Banco de Ingredientes</h3>
                             <div class="flex gap-2 flex-wrap">
+                                <button type="button" id="btn-auto-gerar-ingredientes" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors flex items-center gap-1" title="Gerar itens de estoque base">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    Gerar Inteligente
+                                </button>
                                 <button type="button" id="btn-importar-ingredientes" class="btn-secondary text-sm">Importar</button>
                                 <button type="button" id="btn-abrir-atualizar-precos" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">Atualizar Preços</button>
                             </div>
@@ -3223,6 +3228,78 @@
             tamanhoPorcaoGInput.addEventListener('input', calcularCustosFinais);
             
             // --- LÓGICA DE IMPORTAÇÃO DE INGREDIENTES ---
+            const btnAutoGerarIngredientes = document.getElementById('btn-auto-gerar-ingredientes');
+            if(btnAutoGerarIngredientes) {
+                btnAutoGerarIngredientes.addEventListener('click', async () => {
+                    const confirmacao = confirm("Deseja gerar os itens de estoque automaticamente baseados na nossa tabela padrão? (Itens que você já possui não serão duplicados)");
+                    if(!confirmacao) return;
+
+                    const icon = btnAutoGerarIngredientes.querySelector('svg');
+                    const textNode = btnAutoGerarIngredientes.lastChild;
+                    const originalText = textNode.textContent;
+
+                    btnAutoGerarIngredientes.disabled = true;
+                    btnAutoGerarIngredientes.innerHTML = '<span class="loader block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Gerando...';
+
+                    let addedCount = 0;
+                    try {
+                        const promises = [];
+                        for (const smartIng of smartIngredientsDatabase) {
+                            // Verifica se já existe um ingrediente com o mesmo nome
+                            const existe = ingredientes.find(i => i.nome.toUpperCase() === smartIng.nome.toUpperCase());
+                            if (!existe) {
+                                // Se o ingrediente também constar na TACO, podemos tentar cruzar para puxar Kcal e Categoria
+                                const tacoItem = typeof tacoDatabase !== 'undefined' ? tacoDatabase.find(t => t.nome.toUpperCase() === smartIng.nome.toUpperCase()) : null;
+                                
+                                const novoIngrediente = {
+                                    nome: smartIng.nome,
+                                    category: smartIng.category,
+                                    unidadeCompraDesc: smartIng.unidadeCompraDesc,
+                                    precoCompra: smartIng.precoCompra,
+                                    unidadeCompraQtd: smartIng.unidadeCompraQtd,
+                                    unidadeBase: smartIng.unidadeBase,
+                                    rendimento: smartIng.rendimento,
+                                    custoBase: smartIng.precoCompra / smartIng.unidadeCompraQtd,
+                                    createdAt: new Date(),
+                                    // Se existir no tacoDatabase, pegar nutrição e substituir a categoria caso necessário
+                                    kcal: tacoItem ? tacoItem.kcal : null,
+                                    carb: tacoItem ? tacoItem.carb : null,
+                                    prot: tacoItem ? tacoItem.prot : null,
+                                    gord: tacoItem ? tacoItem.gord : null
+                                };
+
+                                promises.push(addDoc(collection(db, getCollectionPath('ingredients')), novoIngrediente));
+                                addedCount++;
+                                
+                                // Para não sobrecarregar
+                                if (promises.length >= 10) {
+                                    await Promise.all(promises);
+                                    promises.length = 0;
+                                }
+                            }
+                        }
+                        if (promises.length > 0) {
+                            await Promise.all(promises);
+                        }
+
+                        if (addedCount > 0) {
+                            alert(`${addedCount} ingredientes foram gerados com sucesso!`);
+                        } else {
+                            alert('Todos os itens da base padrão já existem no seu estoque!');
+                        }
+
+                    } catch (err) {
+                        console.error("Erro ao auto-gerar ingredientes:", err);
+                        alert("Houve um erro ao tentar gerar os ingredientes.");
+                    } finally {
+                        btnAutoGerarIngredientes.disabled = false;
+                        btnAutoGerarIngredientes.innerHTML = '';
+                        btnAutoGerarIngredientes.appendChild(icon);
+                        btnAutoGerarIngredientes.appendChild(document.createTextNode(' Gerar Inteligente'));
+                    }
+                });
+            }
+
             btnImportarIngredientes.addEventListener('click', () => {
                 importModal.classList.remove('hidden');
                 importModal.classList.add('flex');
