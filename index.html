@@ -434,7 +434,13 @@
                                 <h4 class="text-xl font-semibold mb-4 text-blue-700">Categorias</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                                     <div>
-                                        <h5 class="text-lg font-semibold mb-3">Ingredientes</h5>
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h5 class="text-lg font-semibold">Ingredientes</h5>
+                                            <button type="button" id="btn-auto-cat-ingredientes" class="text-xs font-semibold text-amber-600 hover:text-amber-800 flex items-center gap-1" title="Categorização Inteligente (Auto-Criar)">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                Auto
+                                            </button>
+                                        </div>
                                         <form id="form-cat-ingrediente" class="flex gap-2 mb-4">
                                             <input type="text" id="nome-cat-ingrediente" placeholder="Ex: Laticínios" required class="form-input">
                                             <button type="submit" class="btn-primary text-sm px-4">Add</button>
@@ -3816,6 +3822,43 @@
             });
             
             // --- EVENT LISTENERS DE CATEGORIA E CONFIGURAÇÕES ---
+            const btnAutoCatIngredientes = document.getElementById('btn-auto-cat-ingredientes');
+            if(btnAutoCatIngredientes) {
+                btnAutoCatIngredientes.addEventListener('click', async () => {
+                    const confirmacao = confirm("Deseja criar as categorias padrão automaticamente (Proteínas, Hortifrúti, Secos, etc.)?");
+                    if (!confirmacao) return;
+
+                    const smartCategories = [
+                        'PROTEÍNAS E CÁRNEOS',
+                        'HORTIFRÚTI E PERECÍVEIS',
+                        'LATICÍNIOS E FRIOS',
+                        'ESTOQUE SECO E MERCEARIA',
+                        'INSUMOS DE BAR E BEBIDAS',
+                        'EMBALAGENS E DESCARTÁVEIS'
+                    ];
+
+                    let added = 0;
+                    smartCategories.forEach(cat => {
+                        if (!ingredientCategories.includes(cat)) {
+                            ingredientCategories.push(cat);
+                            added++;
+                        }
+                    });
+
+                    if (added > 0) {
+                        try {
+                            await saveCategories();
+                            alert(`${added} categorias inteligentes criadas com sucesso!`);
+                        } catch (error) {
+                            console.error('Erro ao salvar categorias automáticas:', error);
+                            alert('Erro ao salvar categorias automáticas.');
+                        }
+                    } else {
+                        alert('As categorias inteligentes já existem na sua lista.');
+                    }
+                });
+            }
+
             formCatIngrediente.addEventListener('submit', (e) => addCategory(e, ingredientCategories, 'nome-cat-ingrediente'));
             formCatPrato.addEventListener('submit', (e) => addCategory(e, dishCategories, 'nome-cat-prato'));
             formCatBase.addEventListener('submit', (e) => addCategory(e, baseRecipeCategories, 'nome-cat-base'));
