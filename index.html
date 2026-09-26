@@ -3247,29 +3247,32 @@
                         for (const smartIng of smartIngredientsDatabase) {
                             // Verifica se já existe um ingrediente com o mesmo nome
                             const existe = ingredientes.find(i => i.nome.toUpperCase() === smartIng.nome.toUpperCase());
-                            if (!existe) {
-                                // Se o ingrediente também constar na TACO, podemos tentar cruzar para puxar Kcal e Categoria
-                                const tacoItem = typeof tacoDatabase !== 'undefined' ? tacoDatabase.find(t => t.nome.toUpperCase() === smartIng.nome.toUpperCase()) : null;
-                                
-                                const novoIngrediente = {
-                                    nome: smartIng.nome,
-                                    category: smartIng.category,
-                                    unidadeCompraDesc: smartIng.unidadeCompraDesc,
-                                    precoCompra: smartIng.precoCompra,
-                                    unidadeCompraQtd: smartIng.unidadeCompraQtd,
-                                    unidadeBase: smartIng.unidadeBase,
-                                    rendimento: smartIng.rendimento,
-                                    custoBase: smartIng.precoCompra / smartIng.unidadeCompraQtd,
-                                    createdAt: new Date(),
-                                    // Se existir no tacoDatabase, pegar nutrição e substituir a categoria caso necessário
-                                    kcal: tacoItem ? tacoItem.kcal : null,
-                                    carb: tacoItem ? tacoItem.carb : null,
-                                    prot: tacoItem ? tacoItem.prot : null,
-                                    gord: tacoItem ? tacoItem.gord : null
-                                };
+                            
+                            const tacoItem = typeof tacoDatabase !== 'undefined' ? tacoDatabase.find(t => t.nome.toUpperCase() === smartIng.nome.toUpperCase()) : null;
+                            const ingData = {
+                                nome: smartIng.nome,
+                                category: smartIng.category,
+                                unidadeCompraDesc: smartIng.unidadeCompraDesc,
+                                precoCompra: smartIng.precoCompra,
+                                unidadeCompraQtd: smartIng.unidadeCompraQtd,
+                                unidadeBase: smartIng.unidadeBase,
+                                rendimento: smartIng.rendimento,
+                                custoBase: smartIng.precoCompra / smartIng.unidadeCompraQtd,
+                                kcal: tacoItem ? tacoItem.kcal : null,
+                                carb: tacoItem ? tacoItem.carb : null,
+                                prot: tacoItem ? tacoItem.prot : null,
+                                gord: tacoItem ? tacoItem.gord : null
+                            };
 
-                                promises.push(addDoc(collection(db, getCollectionPath('ingredients')), novoIngrediente));
+                            if (!existe) {
+                                ingData.createdAt = new Date();
+                                promises.push(addDoc(collection(db, getCollectionPath('ingredients')), ingData));
                                 addedCount++;
+                            } else {
+                                // Atualiza para forçar o padrao kg/l se ele estiver em g/ml vindo da importação anterior
+                                promises.push(updateDoc(doc(db, getCollectionPath('ingredients'), existe.id), ingData));
+                                addedCount++; // Conta como atualizado/inserido
+                            }
                                 
                                 // Para não sobrecarregar
                                 if (promises.length >= 10) {

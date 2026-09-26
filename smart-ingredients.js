@@ -4,8 +4,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 48.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.25
     },
     {
@@ -13,8 +13,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 89.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.15
     },
     {
@@ -22,8 +22,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 74.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.28
     },
     {
@@ -31,8 +31,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 42.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.2
     },
     {
@@ -40,8 +40,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 36.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.22
     },
     {
@@ -49,8 +49,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 29.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.35
     },
     {
@@ -67,8 +67,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 38.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.05
     },
     {
@@ -76,8 +76,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 28.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.22
     },
     {
@@ -85,8 +85,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 24.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.12
     },
     {
@@ -94,8 +94,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 21.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.02
     },
     {
@@ -103,8 +103,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 39.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.05
     },
     {
@@ -112,8 +112,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 19.8,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.12
     },
     {
@@ -121,8 +121,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 16.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.18
     },
     {
@@ -130,8 +130,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 22.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.2
     },
     {
@@ -139,8 +139,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 98.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.22
     },
     {
@@ -148,8 +148,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 38.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.1
     },
     {
@@ -157,8 +157,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 85.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.15
     },
     {
@@ -166,8 +166,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 110.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.25
     },
     {
@@ -175,8 +175,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 58.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.1
     },
     {
@@ -184,8 +184,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 92.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.12
     },
     {
@@ -193,8 +193,8 @@ const smartIngredientsDatabase = [
         "category": "PROTEÍNAS E CÁRNEOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 49.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.18
     },
     {
@@ -202,8 +202,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 8.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.15
     },
     {
@@ -211,8 +211,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 5.8,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.12
     },
     {
@@ -220,8 +220,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 8.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.12
     },
     {
@@ -229,8 +229,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 28.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.02
     },
     {
@@ -238,8 +238,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 6.2,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.22
     },
     {
@@ -247,8 +247,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 5.2,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.2
     },
     {
@@ -256,8 +256,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 4.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.18
     },
     {
@@ -265,8 +265,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 9.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.25
     },
     {
@@ -274,8 +274,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 7.8,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.22
     },
     {
@@ -310,8 +310,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 4.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.35
     },
     {
@@ -319,8 +319,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 14.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.35
     },
     {
@@ -328,8 +328,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 9.8,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.8
     },
     {
@@ -337,8 +337,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "CX 250G",
         "precoCompra": 6.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 250.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 0.25,
         "rendimento": 1.08
     },
     {
@@ -355,8 +355,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 12.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.2
     },
     {
@@ -364,8 +364,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 24.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -373,8 +373,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 29.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -382,8 +382,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 5.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.15
     },
     {
@@ -391,8 +391,8 @@ const smartIngredientsDatabase = [
         "category": "HORTIFRÚTI E PERECÍVEIS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 6.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.18
     },
     {
@@ -400,8 +400,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 38.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -409,8 +409,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 39.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -418,8 +418,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 68.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.02
     },
     {
@@ -427,8 +427,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 59.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -436,8 +436,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 85.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -445,8 +445,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 22.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -454,8 +454,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 34.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -463,8 +463,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 42.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -472,8 +472,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "LT",
         "precoCompra": 26.0,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -481,8 +481,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "LT",
         "precoCompra": 5.2,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -490,8 +490,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 26.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -499,8 +499,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 62.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -508,8 +508,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 49.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -517,8 +517,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 38.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -526,8 +526,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 12.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -535,8 +535,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 24.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -544,8 +544,8 @@ const smartIngredientsDatabase = [
         "category": "LATICÍNIOS E FRIOS",
         "unidadeCompraDesc": "KG",
         "precoCompra": 18.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -562,8 +562,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "SACO 5KG",
         "precoCompra": 28.9,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 5000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 5.0,
         "rendimento": 1.0
     },
     {
@@ -571,8 +571,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 7.8,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.02
     },
     {
@@ -580,8 +580,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "SACO 10KG",
         "precoCompra": 42.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 10000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 10.0,
         "rendimento": 1.0
     },
     {
@@ -589,8 +589,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "LT",
         "precoCompra": 48.0,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -598,8 +598,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "PET 900ML",
         "precoCompra": 6.8,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 900.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 0.9,
         "rendimento": 1.0
     },
     {
@@ -607,8 +607,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 2.2,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -616,8 +616,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 45.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -625,8 +625,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 4.1,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -634,8 +634,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 12.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -643,8 +643,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 9.8,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -652,8 +652,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "LATA 2.5KG",
         "precoCompra": 28.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 2500.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 2.5,
         "rendimento": 1.0
     },
     {
@@ -661,8 +661,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 14.5,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -670,8 +670,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 12.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -679,8 +679,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 16.8,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -688,8 +688,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 22.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -697,8 +697,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 32.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -706,8 +706,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 38.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -715,8 +715,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "LT",
         "precoCompra": 11.5,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -724,8 +724,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "LT",
         "precoCompra": 4.5,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -733,8 +733,8 @@ const smartIngredientsDatabase = [
         "category": "ESTOQUE SECO E MERCEARIA",
         "unidadeCompraDesc": "KG",
         "precoCompra": 26.0,
-        "unidadeBase": "g",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "kg",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -796,8 +796,8 @@ const smartIngredientsDatabase = [
         "category": "BEBIDAS E BAR",
         "unidadeCompraDesc": "GARRAFA 750ML",
         "precoCompra": 45.0,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 750.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 0.75,
         "rendimento": 1.0
     },
     {
@@ -805,8 +805,8 @@ const smartIngredientsDatabase = [
         "category": "BEBIDAS E BAR",
         "unidadeCompraDesc": "GARRAFA 750ML",
         "precoCompra": 115.0,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 750.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 0.75,
         "rendimento": 1.0
     },
     {
@@ -814,8 +814,8 @@ const smartIngredientsDatabase = [
         "category": "BEBIDAS E BAR",
         "unidadeCompraDesc": "GARRAFA 1LT",
         "precoCompra": 89.0,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 1000.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 1.0,
         "rendimento": 1.0
     },
     {
@@ -823,8 +823,8 @@ const smartIngredientsDatabase = [
         "category": "BEBIDAS E BAR",
         "unidadeCompraDesc": "GARRAFA 700ML",
         "precoCompra": 58.0,
-        "unidadeBase": "ml",
-        "unidadeCompraQtd": 700.0,
+        "unidadeBase": "l",
+        "unidadeCompraQtd": 0.7,
         "rendimento": 1.0
     },
     {
