@@ -1,9 +1,10 @@
-﻿const CACHE_NAME = "cmv-ia-cache-v2";
+﻿const CACHE_NAME = "cmv-ia-cache-v3";
 const urlsToCache = [
   "./",
   "./index.html",
   "./taco-data.js",
-  "./smart-ingredients.js"
+  "./smart-ingredients.js",
+  "./tour.js"
 ];
 
 self.addEventListener("install", event => {
@@ -12,37 +13,6 @@ self.addEventListener("install", event => {
       .then(cache => cache.addAll(urlsToCache))
   );
   self.skipWaiting();
-});
-
-self.addEventListener("fetch", event => {
-  // Only intercept GET requests, ignore firestore API
-  if (event.request.method !== "GET" || event.request.url.includes("firestore.googleapis.com")) return;
-
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) return response;
-        
-        return fetch(event.request).then(
-          networkResponse => {
-            // Se for resposta válida OU resposta de CDN externa (opaque), armazenar no cache
-            if(!networkResponse || (networkResponse.status !== 200 && networkResponse.type !== "opaque")) {
-              return networkResponse;
-            }
-
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return networkResponse;
-          }
-        ).catch(() => {
-          // Ignore network errors
-        });
-      })
-  );
 });
 
 self.addEventListener("activate", event => {
@@ -59,3 +29,26 @@ self.addEventListener("activate", event => {
   );
   self.clients.claim();
 });
+
+self.addEventListener("fetch", event => {
+  if (event.request.method !== "GET" || event.request.url.includes("firestore.googleapis.com")) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then(networkResponse => {
+        // Se a rede respondeu com sucesso, salva no cache e retorna a resposta fresca (Network First)
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        // Se a rede falhar (offline), busca no cache
+        return caches.match(event.request);
+      })
+  );
+});
+
