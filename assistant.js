@@ -14,7 +14,7 @@
 
     // Estado conversacional para diálogos multi-etapas
     let conversationState = {
-        step: null, // 'AWAITING_ING_NAME_FOR_PRICE', 'AWAITING_NEW_PRICE', 'AWAITING_SAVE_TYPE', 'AWAITING_EXIT_CONFIRMATION', 'AWAITING_PRATO_NAME_FOR_SAVE', 'AWAITING_ING_SAVE_CHOICE'
+        step: null, // 'AWAITING_ING_NAME_FOR_PRICE', 'AWAITING_NEW_PRICE', 'AWAITING_SAVE_TYPE', 'AWAITING_EXIT_CONFIRMATION', 'AWAITING_PRATO_NAME_FOR_SAVE', 'AWAITING_ING_SAVE_CHOICE', 'AWAITING_TOUR_CONFIRMATION'
         data: {}
     };
 
@@ -460,13 +460,290 @@
         }
     }
 
-    function showFeedback(text, isSuccess = true) {
+    function showFeedback(text, isSuccess = true, customHtml = null) {
         if (!actionBadge) return;
-        actionBadge.textContent = text;
+        if (customHtml) {
+            actionBadge.innerHTML = customHtml;
+        } else {
+            actionBadge.textContent = text;
+        }
         actionBadge.className = isSuccess 
-            ? 'text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 p-2 rounded-lg border border-green-200 dark:border-green-800 mt-2 block'
-            : 'text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800 mt-2 block';
+            ? 'text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 p-2.5 rounded-lg border border-green-200 dark:border-green-800 mt-2 block shadow-sm'
+            : 'text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-lg border border-amber-200 dark:border-amber-800 mt-2 block shadow-sm';
         actionBadge.classList.remove('hidden');
+    }
+
+    // ============================================================
+    // RESPOSTAS A DÚVIDAS, TUTORIAIS E COMO FAZER (FAQ INTELIGENTE)
+    // ============================================================
+    function handleTutorialAndFAQ(t, rawText, app) {
+        // 1. O QUE É CMV / COMO CALCULAR CMV / MARGEM IDEAL
+        const isCmvQ = (t.includes('cmv') || t.includes('margem') || t.includes('custo de mercadoria')) &&
+            (t.includes('o que e') || t.includes('oque e') || t.includes('como calcular') || 
+             t.includes('como funciona') || t.includes('qual o') || t.includes('qual e') || 
+             t.includes('o que significa') || t.includes('entender') || t.includes('explicar') || 
+             t === 'cmv' || t === 'o que e cmv' || t === 'qual cmv ideal' || t.includes('cmv ideal'));
+
+        if (isCmvQ) {
+            if (app) app.showView('dashboard');
+            conversationState = { step: 'AWAITING_TOUR_CONFIRMATION', data: { tourType: 'cmv' } };
+            const spoken = 'CMV significa Custo de Mercadoria Vendida. É a porcentagem do seu faturamento gasta com ingredientes. Em restaurantes eficientes, o CMV ideal fica entre 28% e 35%. No nosso Dashboard você acompanha essa média em tempo real! Deseja que eu inicie o tour explicativo no Dashboard?';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                        <span>📊</span> <span>Entendendo o CMV</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        <b>CMV Ideal: 28% a 35%</b> da receita bruta. Mede o peso dos insumos nas suas vendas e orienta sua precificação inteligente.
+                    </p>
+                    <button onclick="window.startAppTour && window.startAppTour('cmv')" 
+                            class="mt-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium shadow text-xs inline-flex items-center gap-1.5 cursor-pointer transition">
+                        ▶️ Iniciar Tour do Dashboard
+                    </button>
+                </div>
+            `;
+            showFeedback('📊 ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 2. COMO CADASTRAR CATEGORIAS / ONDE CRIAR CATEGORIA
+        const isCatQ = (t.includes('categoria') || t.includes('categorias')) &&
+            (t.includes('como') || t.includes('onde') || t.includes('ajuda') || 
+             t.includes('ensina') || t.includes('explicar') || t.includes('o que e') || 
+             t.includes('para que serve') || t.includes('passo a passo') || t.includes('duvida') ||
+             t.includes('criar categoria no sistema') || t.includes('cadastrar categoria'));
+
+        if (isCatQ) {
+            if (app) app.showView('settings');
+            setTimeout(() => {
+                const el = document.getElementById('form-cat-ingrediente');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+            conversationState = { step: 'AWAITING_TOUR_CONFIRMATION', data: { tourType: 'categoria' } };
+            const spoken = 'Para cadastrar categorias, acesse as Configurações no menu lateral. O sistema divide as categorias em quatro blocos: Ingredientes, Venda Direta, Pratos e Bases. Você também pode clicar no botão verde Categorias Recomendadas para preencher tudo automaticamente! Deseja iniciar o passo a passo guiado?';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
+                        <span>⚙️</span> <span>Como Cadastrar Categorias</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        O CMV.IA possui 4 blocos separados de categorias para máxima organização, além de preenchimento automático em 1 clique.
+                    </p>
+                    <button onclick="window.startAppTour && window.startAppTour('categoria')" 
+                            class="mt-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium shadow text-xs inline-flex items-center gap-1.5 cursor-pointer transition">
+                        ▶️ Iniciar Passo a Passo
+                    </button>
+                </div>
+            `;
+            showFeedback('⚙️ ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 3. COMO MONTAR / ESTRUTURAR A FICHA TÉCNICA
+        const isFichaQ = (t.includes('ficha') || t.includes('fichas') || t.includes('receita') || t.includes('prato')) &&
+            (t.includes('como montar') || t.includes('como fazer') || t.includes('como criar') || 
+             t.includes('como funciona') || t.includes('onde faco') || t.includes('onde crio') || 
+             t.includes('como calcular') || t.includes('passo a passo') || t.includes('ensina') || 
+             t.includes('explicar') || t.includes('estrutura') || t.includes('o que precisa') || 
+             t === 'como montar a ficha' || t === 'como fazer ficha' || t === 'como funciona a ficha' ||
+             t === 'como montar ficha' || t === 'como criar ficha');
+
+        if (isFichaQ) {
+            if (app) app.showView('fichas');
+            conversationState = { step: 'AWAITING_TOUR_CONFIRMATION', data: { tourType: 'ficha' } };
+            const spoken = 'Para montar uma ficha técnica, acesse a tela de Ficha Técnica, defina o nome do prato, o rendimento em quilos e a porção individual. Em seguida, adicione os insumos informando peso bruto e líquido para calcular as perdas e o custo real. No final, defina o markup de lucro. Quer que eu inicie o passo a passo guiado?';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                        <span>📝</span> <span>Como Montar a Ficha Técnica</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        Aprenda a estruturar rendimento, fator de correção (FC), markup comercial e geração de PDFs (Custo e Operacional).
+                    </p>
+                    <button onclick="window.startAppTour && window.startAppTour('ficha')" 
+                            class="mt-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded font-medium shadow text-xs inline-flex items-center gap-1.5 cursor-pointer transition">
+                        ▶️ Iniciar Passo a Passo
+                    </button>
+                </div>
+            `;
+            showFeedback('📝 ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 4. ONDE / COMO ATUALIZAR PREÇOS E CUSTOS
+        const isPrecoQ = (t.includes('preco') || t.includes('precos') || t.includes('custo') || t.includes('custos') || t.includes('reajuste') || t.includes('reajustar') || t.includes('tabela')) &&
+            (t.includes('onde atualizo') || t.includes('como atualizo') || t.includes('como atualizar') || 
+             t.includes('onde mudo') || t.includes('como mudar') || t.includes('onde altero') || 
+             t.includes('como alterar') || t.includes('onde reajusto') || t.includes('em lote') || 
+             t.includes('passo a passo') || t.includes('ensina') || t.includes('explicar') ||
+             t === 'onde atualizo preco' || t === 'onde atualizo precos' || t === 'como atualizo preco' || t === 'como atualizar precos');
+
+        if (isPrecoQ) {
+            if (app) app.showView('ingredientes');
+            setTimeout(() => {
+                const painel = document.getElementById('painel-atualizar-precos');
+                if (painel && painel.classList.contains('hidden')) {
+                    const btnToggle = document.getElementById('btn-toggle-atualizar-precos');
+                    if (btnToggle) btnToggle.click();
+                }
+            }, 300);
+            conversationState = { step: 'AWAITING_TOUR_CONFIRMATION', data: { tourType: 'preco' } };
+            const spoken = 'Para atualizar preços, acesse a tela de Ingredientes. Você pode clicar no botão azul Atualizar Preços em Lote no topo para reajustar vários itens de uma só vez, ou editar o ingrediente direto na lista. Todas as fichas técnicas são recalculadas na hora! Quer ver o passo a passo na tela?';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                        <span>💰</span> <span>Onde Atualizar Preços</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        Reajuste múltiplos insumos com o painel em lote. O sistema atualiza o custo em cascata de todas as fichas vinculadas.
+                    </p>
+                    <button onclick="window.startAppTour && window.startAppTour('preco')" 
+                            class="mt-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium shadow text-xs inline-flex items-center gap-1.5 cursor-pointer transition">
+                        ▶️ Iniciar Passo a Passo
+                    </button>
+                </div>
+            `;
+            showFeedback('💰 ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 5. COMO FUNCIONA PRODUTOS DE VENDA DIRETA
+        const isVendaDiretaQ = (t.includes('venda direta') || (t.includes('produto') && t.includes('revenda')) || t.includes('refrigerante') || t.includes('bebida')) &&
+            (t.includes('como') || t.includes('o que e') || t.includes('oque e') || 
+             t.includes('onde') || t.includes('funciona') || t.includes('passo a passo') || 
+             t.includes('ensina') || t.includes('explicar') || t === 'venda direta' || t === 'o que e venda direta');
+
+        if (isVendaDiretaQ) {
+            if (app) app.showView('venda-direta');
+            conversationState = { step: 'AWAITING_TOUR_CONFIRMATION', data: { tourType: 'venda-direta' } };
+            const spoken = 'A Venda Direta é para itens que você compra prontos para revenda, como refrigerantes, cervejas e sobremesas prontas. Basta informar o nome, categoria, preço de compra e preço de venda. O sistema calcula seu lucro bruto e margem na hora. Quer que eu mostre o passo a passo?';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                        <span>🛒</span> <span>Produtos de Venda Direta</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        Cadastre mercadorias revendidas prontas sem ficha complexa, monitorando margem e lucro bruto imediato.
+                    </p>
+                    <button onclick="window.startAppTour && window.startAppTour('venda-direta')" 
+                            class="mt-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium shadow text-xs inline-flex items-center gap-1.5 cursor-pointer transition">
+                        ▶️ Iniciar Passo a Passo
+                    </button>
+                </div>
+            `;
+            showFeedback('🛒 ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 6. COMO IMPRIMIR ETIQUETAS E REGRAS ANVISA
+        const isEtiquetasQ = (t.includes('etiqueta') || t.includes('etiquetas') || t.includes('validade') || t.includes('anvisa')) &&
+            (t.includes('como') || t.includes('onde') || t.includes('funciona') || 
+             t.includes('passo a passo') || t.includes('ensina') || t.includes('explicar') || 
+             t.includes('regras') || t === 'como imprimir etiqueta' || t === 'como imprimir etiquetas');
+
+        if (isEtiquetasQ) {
+            if (app) app.showView('etiquetas');
+            conversationState = { step: 'AWAITING_TOUR_CONFIRMATION', data: { tourType: 'etiquetas' } };
+            const spoken = 'Na tela de Etiquetas ANVISA, você escolhe o produto ou ficha e define a conservação: resfriado para 3 dias, congelado para 90 dias, seco para 180 dias ou descongelado para 24 horas. O sistema calcula a validade, lote e gera a etiqueta pronta para imprimir! Deseja ver o passo a passo?';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
+                        <span>🏷️</span> <span>Etiquetas e Validade ANVISA</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        Prazos automáticos de conservação sanitária (Resfriado 3d, Congelado 90d, Seco 180d, Descongelado 24h) com rastreabilidade total.
+                    </p>
+                    <button onclick="window.startAppTour && window.startAppTour('etiquetas')" 
+                            class="mt-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded font-medium shadow text-xs inline-flex items-center gap-1.5 cursor-pointer transition">
+                        ▶️ Iniciar Passo a Passo
+                    </button>
+                </div>
+            `;
+            showFeedback('🏷️ ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 7. O QUE É FATOR DE CORREÇÃO (FC)
+        const isFcQ = (t.includes('fator de correcao') || t.includes('fator correcao') || t === 'o que e fc' || t.includes('peso bruto') || t.includes('peso liquido')) &&
+            (t.includes('o que e') || t.includes('oque e') || t.includes('para que serve') || 
+             t.includes('como calcular') || t.includes('como funciona') || t.includes('explicar') || t === 'o que e fc');
+
+        if (isFcQ) {
+            const spoken = 'O Fator de Correção é o Peso Bruto dividido pelo Peso Líquido. Ele calcula as perdas ao limpar carnes ou descascar legumes. Se você compra um quilo de carne e após a limpeza sobram 800 gramas, seu fator de correção é um ponto vinte e cinco, e o CMV.IA garante que o custo cobrado seja o do quilo real pago!';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                        <span>🥩</span> <span>Fator de Correção (FC = PB / PL)</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        Mede o desperdício inevitável (aparas, ossos, cascas). Um FC de 1,25 significa 25% de perda, ajustando o custo do ingrediente para o valor real.
+                    </p>
+                </div>
+            `;
+            showFeedback('🥩 ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 8. O QUE É RECEITA BASE VS PRATO FINAL
+        const isBaseQ = (t.includes('receita base') || t.includes('prato final') || t.includes('base ou prato')) &&
+            (t.includes('o que e') || t.includes('oque e') || t.includes('diferenca') || 
+             t.includes('quando usar') || t.includes('para que serve') || t.includes('explicar'));
+
+        if (isBaseQ) {
+            const spoken = 'A Receita Base é uma preparação intermediária que rende volume e serve como ingrediente em vários pratos, como molho de tomate ou massa fresca. Já o Prato Final é o item pronto, precificado com margem e servido diretamente ao cliente!';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-teal-700 dark:text-teal-400 flex items-center gap-1.5">
+                        <span>🍲</span> <span>Receita Base vs. Prato Final</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        <b>Receita Base:</b> Produção em lote que entra como insumo de outras fichas.<br>
+                        <b>Prato Final:</b> Item final do cardápio com markup e preço de venda.
+                    </p>
+                </div>
+            `;
+            showFeedback('🍲 ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        // 9. TOUR GERAL / TUTORIAL GERAL / AJUDA GERAL DO SISTEMA
+        const isGeneralTourQ = t === 'tutorial' || t === 'iniciar tutorial' || t === 'comecar tutorial' || 
+            t === 'abrir tutorial' || t === 'ver tutorial' || t === 'fazer tour' || t === 'iniciar tour' || 
+            t === 'tour guiado' || t === 'tour' || t === 'ajuda' || t === 'preciso de ajuda' || 
+            t.includes('quais comandos') || t.includes('o que voce faz') || t.includes('o que voce pode fazer') || 
+            t.includes('como voce funciona') || t.includes('como usar o sistema');
+
+        if (isGeneralTourQ) {
+            conversationState = { step: 'AWAITING_TOUR_CONFIRMATION', data: { tourType: 'geral' } };
+            const spoken = 'Eu sou seu assistente por voz no CMV.IA! Posso criar categorias, adicionar ingredientes, calcular fichas, atualizar preços em lote, gerar etiquetas e emitir relatórios em PDF. Deseja iniciar o tour interativo geral pelo sistema?';
+            const html = `
+                <div class="space-y-1.5 text-left">
+                    <div class="font-bold text-primary flex items-center gap-1.5">
+                        <span>🧭</span> <span>Tour do Sistema CMV.IA</span>
+                    </div>
+                    <p class="text-xs text-gray-700 dark:text-gray-300">
+                        Um guia interativo que passa por todas as telas e recursos essenciais do sistema.
+                    </p>
+                    <button onclick="window.startAppTour && window.startAppTour('geral')" 
+                            class="mt-1 px-3 py-1.5 bg-primary hover:opacity-90 text-white rounded font-medium shadow text-xs inline-flex items-center gap-1.5 cursor-pointer transition">
+                        ▶️ Iniciar Tour Completo
+                    </button>
+                </div>
+            `;
+            showFeedback('🧭 ' + spoken, true, html);
+            speak(spoken);
+            return true;
+        }
+
+        return false;
     }
 
     // ============================================================
@@ -987,6 +1264,46 @@
                 speak(msg);
                 return;
             }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 9. AGUARDANDO CONFIRMAÇÃO DO PASSO A PASSO / TUTORIAL
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_TOUR_CONFIRMATION') {
+            const tourType = conversationState.data?.tourType || 'geral';
+            const positiveMatches = ['sim', 'quero', 'pode ser', 'iniciar', 'mostra', 'mostrar', 'comecar', 'vamos', 'ok', 'claro', 'bora', 'pode', 'positivo', 'fazer tour', 'fazer tutorial'];
+            const negativeMatches = ['nao', 'agora nao', 'depois', 'cancelar', 'esquece', 'deixa'];
+
+            const isPositive = positiveMatches.some(p => t === p || t.startsWith(p + ' ') || t.endsWith(' ' + p));
+            const isNegative = negativeMatches.some(n => t === n || t.startsWith(n + ' ') || t.endsWith(' ' + n));
+
+            if (isPositive) {
+                conversationState = { step: null, data: {} };
+                const msg = 'Iniciando o passo a passo interativo na tela!';
+                showFeedback('🚀 ' + msg);
+                speak(msg);
+                if (typeof window.startAppTour === 'function') {
+                    setTimeout(() => {
+                        window.startAppTour(tourType);
+                    }, 400);
+                }
+                return;
+            } else if (isNegative) {
+                conversationState = { step: null, data: {} };
+                const msg = 'Tudo bem! Se precisar de ajuda ou de um tour guiado, é só pedir.';
+                showFeedback('👍 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                conversationState = { step: null, data: {} };
+            }
+        }
+
+        // ------------------------------------------------------------
+        // PERGUNTAS DE TUTORIAL, DÚVIDAS E COMO FAZER (FAQ INTELIGENTE)
+        // ------------------------------------------------------------
+        if (handleTutorialAndFAQ(t, rawText, app)) {
+            return;
         }
 
         // ============================================================
@@ -1727,7 +2044,7 @@
 
         if (t.includes('tour') || t.includes('tutorial') || t.includes('ajuda') || t.includes('como usar')) {
             if (typeof window.startAppTour === 'function') {
-                window.startAppTour();
+                window.startAppTour('geral');
                 const msg = 'Iniciando tour guiado pelo sistema.';
                 showFeedback('💡 ' + msg);
                 speak(msg);
