@@ -277,6 +277,62 @@
         return bestProd;
     }
 
+    // Limpa comandos, artigos e preposições de uma busca por ficha
+    function cleanFichaQuery(text) {
+        if (!text) return '';
+        let q = normalize(text);
+        q = q.replace(/^(abrir|ver|editar|carregar|consultar|mostrar|buscar)\s+(a\s+|o\s+|as\s+|os\s+)?(ficha|receita|prato)(\s+tecnica)?\s*/i, '');
+        q = q.replace(/^(a\s+|o\s+)?(ficha|receita|prato)(\s+tecnica)?\s*/i, '');
+        // Limpar preposições e artigos iniciais e finais
+        q = q.replace(/^(de|do|da|dos|das|o|a|os|as|um|uma)\s+/i, '');
+        q = q.replace(/\s+(de|do|da|dos|das)$/i, '');
+        return q.trim();
+    }
+
+    // Busca inteligente de ficha técnica / prato por similaridade de nome e tokens
+    function findBestFichaMatch(query, receitasSalvas) {
+        if (!Array.isArray(receitasSalvas) || receitasSalvas.length === 0) return null;
+        const qClean = cleanFichaQuery(query);
+        const qNorm = normalize(query);
+        if (!qClean && !qNorm) return null;
+
+        const tokensClean = qClean.split(' ').filter(Boolean);
+        let bestRec = null;
+        let bestScore = -1;
+
+        for (const rec of receitasSalvas) {
+            const rawName = rec.header?.descricaoProduto || '';
+            const nameNorm = normalize(rawName);
+            const nameClean = cleanFichaQuery(rawName);
+            let score = 0;
+
+            if (nameNorm === qNorm || nameClean === qClean) {
+                score = 1000;
+            } else if (nameClean && qClean && nameClean === qClean) {
+                score = 900;
+            } else if (nameNorm.startsWith(qClean) || nameClean.startsWith(qClean)) {
+                score = 600;
+            } else if (nameNorm.includes(qClean) || nameClean.includes(qClean)) {
+                score = 450;
+            } else if (tokensClean.length > 0) {
+                let matched = 0;
+                for (const tok of tokensClean) {
+                    if (nameNorm.includes(tok) || nameClean.includes(tok)) matched++;
+                }
+                if (matched > 0) {
+                    score = (matched / tokensClean.length) * 280;
+                }
+            }
+
+            if (score > bestScore && score >= 80) {
+                bestScore = score;
+                bestRec = rec;
+            }
+        }
+
+        return bestRec ? { ficha: bestRec, score: bestScore } : null;
+    }
+
     // Resolve ou cria a categoria de venda direta
     async function resolveDirectSaleCategory(query, app) {
         let q = normalize(query);
@@ -887,6 +943,52 @@
             }
         }
 
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 7. AGUARDANDO NOME DA NOVA FICHA TÉCNICA
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_NEW_FICHA_NAME') {
+            let dishName = rawText.replace(/^(o\s+nome\s+(é|e)\s+|vai\s+se\s+chamar\s+|nome\s+(é|e)\s+|chama\s+|coloque\s+|colocar\s+)/i, '').trim();
+            if (!dishName) dishName = rawText.trim();
+            
+            if (app) app.showView('fichas');
+            const descInput = document.getElementById('descricao-produto');
+            if (descInput) {
+                descInput.value = dishName.toUpperCase();
+                descInput.dispatchEvent(new Event('input'));
+            }
+            conversationState = { step: null, data: {} };
+            const msg = `Ficha técnica iniciada para ${dishName}! Qual o primeiro ingrediente ou quantidade?`;
+            showFeedback('📝 ' + msg);
+            speak(msg);
+            return;
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 8. AGUARDANDO QUAL FICHA ABRIR
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_FICHA_TO_OPEN') {
+            const receitas = app ? app.getReceitasSalvas() : [];
+            const match = findBestFichaMatch(rawText, receitas);
+            if (match && match.ficha) {
+                if (app) {
+                    app.carregarFicha(match.ficha.id);
+                    app.showView('fichas');
+                }
+                conversationState = { step: null, data: {} };
+                const msg = `Abrindo a ficha técnica de ${match.ficha.header.descricaoProduto}!`;
+                showFeedback('📝 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                conversationState = { step: null, data: {} };
+                if (app) app.showView('consultar');
+                const msg = `Não encontrei nenhuma ficha técnica com o nome "${rawText}". Abri a consulta com todas as fichas.`;
+                showFeedback('🔍 ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
         // ============================================================
         // COMANDOS DIRETOS: 1. SALVAR (TOTALMENTE CONTEXTUAL)
         // ============================================================
@@ -1108,42 +1210,13 @@
         // ============================================================
         // COMANDOS DIRETOS: 4. ABRIR / CONSULTAR FICHAS
         // ============================================================
-        if (t.startsWith('abrir ficha ') || t.startsWith('abrir o prato ') || t.startsWith('abrir a ficha ') || t.startsWith('ver ficha de ') || t.startsWith('ver ficha do ')) {
-            const queryFicha = t.replace(/^(abrir ficha |abrir o prato |abrir a ficha |ver ficha de |ver ficha do )\s*/i, '').trim();
-            const receitas = app ? app.getReceitasSalvas() : [];
-            let bestRec = null;
-            let bestScore = -1;
+        const isListFichasCmd = t.includes('abrir as fichas') || t.includes('abrir fichas') || 
+                                t.includes('consultar ficha') || t.includes('ver as fichas') || 
+                                t.includes('ver fichas') || t.includes('fichas salvas') || 
+                                t.includes('minhas fichas') || t.includes('lista de fichas') || 
+                                t === 'fichas' || t === 'as fichas' || t === 'consultar fichas';
 
-            for (const r of receitas) {
-                const nameNorm = normalize(r.header?.descricaoProduto || '');
-                let score = 0;
-                if (nameNorm === queryFicha) score = 1000;
-                else if (nameNorm.includes(queryFicha)) score = 500;
-                else {
-                    const tokens = queryFicha.split(' ').filter(Boolean);
-                    let m = 0;
-                    tokens.forEach(tok => { if (nameNorm.includes(tok)) m++; });
-                    if (m > 0) score = (m / tokens.length) * 200;
-                }
-                if (score > bestScore && score >= 100) {
-                    bestScore = score;
-                    bestRec = r;
-                }
-            }
-
-            if (bestRec && app) {
-                app.carregarFicha(bestRec.id);
-                app.showView('fichas');
-                const msg = `Abrindo a ficha técnica de ${bestRec.header.descricaoProduto}!`;
-                showFeedback('📝 ' + msg);
-                speak(msg);
-                return;
-            }
-        }
-
-        if (t.includes('abrir as fichas') || t.includes('abrir fichas') || t.includes('consultar ficha') || 
-            t.includes('ver as fichas') || t.includes('ver fichas') || t.includes('fichas salvas') || 
-            t.includes('minhas fichas') || t.includes('lista de fichas') || t === 'fichas' || t === 'as fichas') {
+        if (isListFichasCmd) {
             if (app) app.showView('consultar');
             setTimeout(() => {
                 const el = document.getElementById('search-fichas');
@@ -1153,6 +1226,53 @@
             showFeedback('🔍 ' + msg);
             speak(msg);
             return;
+        }
+
+        const isFichaOpenCmd = /^(abrir|ver|editar|carregar|consultar|mostrar)\s+(a\s+|o\s+|as\s+|os\s+)?(ficha|receita|prato)(\s+tecnica)?\b/i.test(t) ||
+                              /^(abrir|ver|editar|carregar)\s+(o\s+prato|a\s+receita|a\s+ficha|o\s+item)\b/i.test(t);
+
+        if (isFichaOpenCmd) {
+            const queryFicha = cleanFichaQuery(t);
+            const receitas = app ? app.getReceitasSalvas() : [];
+
+            if (!queryFicha) {
+                if (app) app.showView('consultar');
+                conversationState = { step: 'AWAITING_FICHA_TO_OPEN', data: {} };
+                const msg = 'Qual ficha técnica você deseja abrir?';
+                showFeedback('❓ ' + msg);
+                speak(msg);
+                return;
+            }
+
+            const match = findBestFichaMatch(queryFicha, receitas);
+            if (match && match.ficha && app) {
+                app.carregarFicha(match.ficha.id);
+                app.showView('fichas');
+                const msg = `Abrindo a ficha técnica de ${match.ficha.header.descricaoProduto}!`;
+                showFeedback('📝 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                if (app) app.showView('consultar');
+                const msg = `Não encontrei a ficha técnica de "${queryFicha}". Abrindo lista para você consultar.`;
+                showFeedback('🔍 ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // Se estiver na tela de consulta de fichas e o usuário falar um nome de prato
+        if (currentView === 'consultar') {
+            const receitas = app ? app.getReceitasSalvas() : [];
+            const match = findBestFichaMatch(t, receitas);
+            if (match && match.ficha && match.score >= 120 && app) {
+                app.carregarFicha(match.ficha.id);
+                app.showView('fichas');
+                const msg = `Abrindo a ficha técnica de ${match.ficha.header.descricaoProduto}!`;
+                showFeedback('📝 ' + msg);
+                speak(msg);
+                return;
+            }
         }
 
         // ============================================================
@@ -1208,19 +1328,43 @@
             return;
         }
 
-        if (t.includes('fazer ficha') || t.includes('criar ficha') || t.includes('nova ficha') || t.includes('ficha tecnica') || t.includes('fazer receita')) {
+        const isCreateFichaCmd = /^(?:fazer|criar|iniciar|nova)\s+(?:a\s+|o\s+)?(?:ficha(?:\s+tecnica)?|receita|prato)\b/i.test(t) ||
+                                 t.includes('fazer ficha') || t.includes('criar ficha') || 
+                                 t.includes('nova ficha') || t.includes('fazer receita') ||
+                                 t === 'nova receita' || t === 'novo prato';
+
+        if (isCreateFichaCmd) {
+            // Tenta extrair o nome do prato se falado junto (Ex: "fazer ficha de contra filé")
+            let dishName = t.replace(/^(?:fazer|criar|iniciar|nova)\s+(?:a\s+|o\s+)?(?:ficha(?:\s+tecnica)?|receita|prato)\s*(?:de|do|da|dos|das)?\s*/i, '').trim();
+            dishName = dishName.replace(/\b(por favor|pra mim|agora)\b/g, '').trim();
+
             if (app) {
                 app.limparFicha();
                 app.showView('fichas');
             }
-            setTimeout(() => {
-                const el = document.getElementById('descricao-produto');
-                if (el) el.focus();
-            }, 300);
-            const msg = 'Abrindo nova ficha técnica. Qual o nome do prato?';
-            showFeedback('📝 ' + msg);
-            speak(msg);
-            return;
+
+            if (dishName.length > 1) {
+                const descInput = document.getElementById('descricao-produto');
+                if (descInput) {
+                    descInput.value = dishName.toUpperCase();
+                    descInput.dispatchEvent(new Event('input'));
+                }
+                conversationState = { step: null, data: {} };
+                const msg = `Nova ficha técnica de ${dishName} iniciada! Qual o primeiro insumo ou ingrediente?`;
+                showFeedback('📝 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                conversationState = { step: 'AWAITING_NEW_FICHA_NAME', data: {} };
+                setTimeout(() => {
+                    const el = document.getElementById('descricao-produto');
+                    if (el) el.focus();
+                }, 300);
+                const msg = 'Abrindo nova ficha técnica. Qual o nome do prato?';
+                showFeedback('📝 ' + msg);
+                speak(msg);
+                return;
+            }
         }
 
         if (t.includes('ingrediente') || t.includes('estoque') || t.includes('banco de ingredientes') || t.includes('materia prima')) {
@@ -1233,6 +1377,66 @@
             showFeedback('🍅 ' + msg);
             speak(msg);
             return;
+        }
+
+        // ============================================================
+        // COMANDOS DIRETOS: GERAR E IMPRIMIR PDF DA FICHA TÉCNICA
+        // ============================================================
+        const isPdfCustoCmd = t.includes('pdf de custo') || t.includes('pdf com custo') || 
+                              t.includes('pdf com custos') || t.includes('imprimir pdf de custo') || 
+                              t.includes('gerar pdf de custo') || t.includes('pdf financeiro');
+
+        const isPdfOpCmd = t.includes('pdf operacional') || t.includes('pdf de operacao') || 
+                           t.includes('pdf sem custo') || t.includes('pdf sem custos') || 
+                           t.includes('imprimir pdf operacional') || t.includes('gerar pdf operacional') || 
+                           t.includes('pdf da cozinha') || t.includes('pdf de producao');
+
+        const isPrintFichaCmd = t === 'imprimir' || t === 'imprimir ficha' || t === 'imprimir receita' || 
+                                t === 'imprimir prato' || t.startsWith('imprimir ficha') || 
+                                t.startsWith('imprimir receita') || t.startsWith('imprimir prato');
+
+        if (isPdfCustoCmd) {
+            if (app && typeof app.gerarPDFAtiva === 'function') {
+                app.gerarPDFAtiva(true);
+                const msg = 'Gerando PDF com custos da ficha técnica.';
+                showFeedback('📄 ' + msg);
+                speak(msg);
+                return;
+            }
+        }
+
+        if (isPdfOpCmd) {
+            if (app && typeof app.gerarPDFAtiva === 'function') {
+                app.gerarPDFAtiva(false);
+                const msg = 'Gerando PDF operacional da ficha técnica.';
+                showFeedback('📋 ' + msg);
+                speak(msg);
+                return;
+            }
+        }
+
+        if (isPrintFichaCmd && !t.includes('etiqueta')) {
+            const queryPrint = cleanFichaQuery(t.replace(/^imprimir\s*/i, ''));
+            const receitas = app ? app.getReceitasSalvas() : [];
+            if (queryPrint.length > 1) {
+                const match = findBestFichaMatch(queryPrint, receitas);
+                if (match && match.ficha && app) {
+                    app.carregarFicha(match.ficha.id);
+                    app.gerarPDFAtiva(false);
+                    const msg = `Abrindo impressão da ficha técnica de ${match.ficha.header.descricaoProduto}.`;
+                    showFeedback('🖨️ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            if (app && typeof app.imprimirFichaAtiva === 'function') {
+                app.imprimirFichaAtiva();
+                const msg = 'Abrindo impressão da ficha técnica.';
+                showFeedback('🖨️ ' + msg);
+                speak(msg);
+                return;
+            }
         }
 
         // ============================================================
@@ -1314,7 +1518,13 @@
                     if (m && m.item) {
                         targetId = m.item.id;
                         targetName = m.item.header?.descricaoProduto || nomeFichaAtual;
+                    } else {
+                        targetId = 'ativa';
+                        targetName = nomeFichaAtual;
                     }
+                } else if (fichaAtual && fichaAtual.componentes && fichaAtual.componentes.length > 0) {
+                    targetId = 'ativa';
+                    targetName = 'Receita em Edição';
                 }
 
                 if (targetId && app && typeof app.abrirModalEtiquetaPorVoz === 'function') {
@@ -1536,8 +1746,11 @@
         // ============================================================
         // COMANDOS DIRETOS: 7. DEFINIR NOME DO PRATO
         // ============================================================
-        if (t.startsWith('nome do prato') || t.startsWith('nome da receita') || t.startsWith('chamar de') || t.startsWith('prato')) {
-            let nomePrato = rawText.replace(/^(nome do prato|nome da receita|chamar de|prato)\s*/i, '').trim();
+        if (t.startsWith('nome do prato') || t.startsWith('nome da receita') || 
+            t.startsWith('chamar de') || t.startsWith('prato ') || 
+            t.startsWith('mudar nome para') || t.startsWith('definir nome') || 
+            t.startsWith('o nome e ') || t.startsWith('o nome é ')) {
+            let nomePrato = rawText.replace(/^(nome do prato|nome da receita|chamar de|mudar nome para|definir nome|o nome é|o nome e|prato)\s*(para|de|:)?\s*/i, '').trim();
             if (nomePrato) {
                 if (app) app.showView('fichas');
                 const descInput = document.getElementById('descricao-produto');
@@ -1620,11 +1833,11 @@
         } else if (currentView === 'etiquetas') {
             contextualHelp = 'Você está na tela de etiquetas. Diga "imprimir etiqueta de [produto]" ou "voltar ao início".';
         } else if (currentView === 'fichas') {
-            contextualHelp = 'Não entendi. Você pode adicionar um insumo, retirar um item, pedir para imprimir etiqueta ou salvar a ficha.';
+            contextualHelp = 'Não entendi. Você pode adicionar um insumo, retirar um item, pedir "imprimir pdf de custo", "imprimir pdf operacional", ou "salvar a ficha".';
         } else if (currentView === 'ingredientes') {
             contextualHelp = 'Não entendi. Você pode falar "salvar", "atualizar preço" ou o nome de um insumo.';
         } else if (currentView === 'consultar') {
-            contextualHelp = 'Não entendi. Diga o nome de uma ficha para abrir, ou "voltar ao início".';
+            contextualHelp = 'Não entendi. Diga o nome de uma ficha para abrir (ex: "abrir parmegiana"), ou "voltar ao início".';
         }
         showFeedback('❓ ' + contextualHelp, false);
         speak(contextualHelp);

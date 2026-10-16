@@ -190,8 +190,23 @@
             });
         }
     </script>
+    <script>
+        if (localStorage.getItem('cmv_user_logged') === 'true') {
+            document.documentElement.classList.add('cmv-pre-auth');
+        }
+    </script>
+    <style>
+        .cmv-pre-auth #auth-view { display: none !important; }
+        .cmv-pre-auth #app-pre-loader { display: flex !important; }
+    </style>
 </head>
 <body class="bg-primary text-primary">
+
+    <!-- Pre-auth loader to avoid login screen flash on reloads -->
+    <div id="app-pre-loader" class="hidden fixed inset-0 z-50 bg-gray-100 dark:bg-gray-900 flex-col items-center justify-center gap-3">
+        <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">Carregando CMV.IA...</span>
+    </div>
 
     <!-- Auth View -->
     <div id="auth-view" class="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -607,9 +622,23 @@
                 <!-- View de Fichas Técnicas -->
                 <div id="fichas-view" class="view">
                     <div class="card p-4 md:p-8">
-                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-border-color pb-4 gap-4">
+                         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-border-color pb-4 gap-4">
                             <h3 class="text-2xl font-bold">Ficha Técnica Gerencial</h3>
-                            <button type="button" id="btn-nova-ficha" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">Limpar Ficha</button>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" id="btn-pdf-custo-ficha" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 transition-colors shadow-sm" title="Gerar PDF com Custos">
+                                    <span>📄</span> <span>PDF Custo</span>
+                                </button>
+                                <button type="button" id="btn-pdf-op-ficha" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 transition-colors shadow-sm" title="Gerar PDF Operacional (sem valores de custo)">
+                                    <span>📋</span> <span>PDF Operacional</span>
+                                </button>
+                                <button type="button" id="btn-imprimir-ficha" class="bg-gray-700 hover:bg-gray-800 text-white font-medium py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 transition-colors shadow-sm" title="Imprimir Ficha Técnica">
+                                    <span>🖨️</span> <span>Imprimir</span>
+                                </button>
+                                <button type="button" id="btn-etiqueta-ficha-view" class="bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-3 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 transition-colors shadow-sm" title="Imprimir Etiqueta da Ficha">
+                                    <span>🏷️</span> <span>Etiqueta</span>
+                                </button>
+                                <button type="button" id="btn-nova-ficha" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-xs sm:text-sm transition-colors" title="Limpar todos os campos da ficha atual">Limpar Ficha</button>
+                            </div>
                         </div>
                         <form id="form-ficha-header" class="mb-6">
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1087,6 +1116,38 @@
         </div>
     </div>
 
+    <!-- Modal de Visualização e Impressão de PDF -->
+    <div id="pdf-viewer-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden items-center justify-center p-2 sm:p-4">
+        <div class="card p-4 sm:p-6 w-full max-w-4xl h-[92vh] flex flex-col transform transition-all shadow-2xl rounded-2xl bg-white dark:bg-gray-800">
+            <div class="flex justify-between items-center pb-3 border-b border-border-color mb-3">
+                <div class="flex items-center gap-2 overflow-hidden mr-2">
+                    <span class="text-xl flex-shrink-0">📄</span>
+                    <h3 id="pdf-viewer-title" class="text-base sm:text-lg font-bold truncate">Visualização de PDF</h3>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button type="button" id="btn-pdf-modal-imprimir" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shadow transition-colors" title="Imprimir documento">
+                        <span>🖨️</span>
+                        <span class="hidden sm:inline">Imprimir</span>
+                    </button>
+                    <button type="button" id="btn-pdf-modal-download" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-1.5 px-3 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shadow transition-colors" title="Baixar PDF no dispositivo">
+                        <span>⬇️</span>
+                        <span class="hidden sm:inline">Baixar PDF</span>
+                    </button>
+                    <button type="button" id="btn-close-pdf-modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-white text-2xl font-bold p-1 ml-1 leading-none" title="Fechar visualizador">&times;</button>
+                </div>
+            </div>
+            
+            <div class="flex-1 w-full bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden relative">
+                <iframe id="pdf-viewer-iframe" class="w-full h-full border-0" title="Visualizador de PDF"></iframe>
+            </div>
+            
+            <div class="pt-3 text-center sm:text-left text-xs text-secondary flex flex-col sm:flex-row justify-between items-center gap-2">
+                <span>Dica: Use os botões acima para imprimir ou baixar o arquivo mantendo sua tela intacta.</span>
+                <button type="button" id="btn-pdf-modal-fallback" class="text-blue-600 hover:underline text-xs">Abrir em nova aba caso não carregue</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Termos de Uso -->
     <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
         <div class="card p-6 w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh]">
@@ -1408,6 +1469,7 @@
                 if (activeView) {
                     activeView.classList.add('active');
                     headerSubtitle.textContent = subtitleMap[viewId] || 'Dashboard';
+                    try { localStorage.setItem('cmv_active_view', viewId); } catch(e) {}
                     
                     navItems.forEach(nav => {
                         if (nav.dataset.view === viewId) {
@@ -1518,7 +1580,22 @@
                 },
                 fecharModalEtiqueta: () => {
                     const modal = document.getElementById('etiqueta-config-modal');
-                    if (modal) modal.classList.add('hidden');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+                },
+                gerarPDFAtiva: (incluirCustos) => {
+                    if (typeof gerarPDF === 'function') {
+                        return gerarPDF(null, incluirCustos);
+                    }
+                    return false;
+                },
+                imprimirFichaAtiva: () => {
+                    if (typeof gerarPDF === 'function') {
+                        return gerarPDF(null, false);
+                    }
+                    return false;
                 },
                 salvarFichaPorVoz: async (tipo) => {
                     window.salvandoPorVoz = true;
@@ -2090,13 +2167,19 @@
             const btnCancelEtiqueta = document.getElementById('btn-cancel-etiqueta');
             const formGerarEtiqueta = document.getElementById('form-gerar-etiqueta');
 
-            if(btnCloseEtiquetaModal) btnCloseEtiquetaModal.addEventListener('click', () => etiquetaModal.classList.add('hidden'));
-            if(btnCancelEtiqueta) btnCancelEtiqueta.addEventListener('click', () => etiquetaModal.classList.add('hidden'));
+            if(btnCloseEtiquetaModal) btnCloseEtiquetaModal.addEventListener('click', () => {
+                etiquetaModal.classList.add('hidden');
+                etiquetaModal.classList.remove('flex');
+            });
+            if(btnCancelEtiqueta) btnCancelEtiqueta.addEventListener('click', () => {
+                etiquetaModal.classList.add('hidden');
+                etiquetaModal.classList.remove('flex');
+            });
 
             window.abrirModalEtiqueta = function(id) {
                 let nome = '';
                 let kcal = '', carb = '', prot = '', gord = '';
-                const ficha = receitasSalvas.find(f => f.id == id);
+                const ficha = (id && id !== 'ativa') ? receitasSalvas.find(f => f.id == id) : null;
                 if (ficha) {
                     nome = ficha.header.descricaoProduto;
                     let numPorcoes = (ficha.header.rendimentoReceitaKg * 1000) / (ficha.header.tamanhoPorcaoG || 100);
@@ -2106,6 +2189,18 @@
                         carb = (ficha.carbTotal / numPorcoes).toFixed(1);
                         prot = (ficha.protTotal / numPorcoes).toFixed(1);
                         gord = (ficha.gordTotal / numPorcoes).toFixed(1);
+                    }
+                } else if (!id || id === 'ativa') {
+                    nome = document.getElementById('descricao-produto')?.value.trim() || 'RECEITA';
+                    let rendKg = parseFloat(rendimentoReceitaKgInput?.value) || 1;
+                    let tamG = parseFloat(tamanhoPorcaoGInput?.value) || 100;
+                    let numPorcoes = (rendKg * 1000) / tamG;
+                    if (!numPorcoes || numPorcoes <= 0 || isNaN(numPorcoes)) numPorcoes = 1;
+                    if (fichaAtual && fichaAtual.kcalTotal) {
+                        kcal = Math.round(fichaAtual.kcalTotal / numPorcoes);
+                        carb = (fichaAtual.carbTotal / numPorcoes).toFixed(1);
+                        prot = (fichaAtual.protTotal / numPorcoes).toFixed(1);
+                        gord = (fichaAtual.gordTotal / numPorcoes).toFixed(1);
                     }
                 } else {
                     const ing = ingredientes.find(i => i.id == id);
@@ -2120,7 +2215,7 @@
                     }
                 }
 
-                document.getElementById('etq-ficha-id').value = id;
+                document.getElementById('etq-ficha-id').value = id || 'ativa';
                 document.getElementById('etq-nome-produto').value = nome;
                 
                 // Limpar campos
@@ -2133,6 +2228,7 @@
                 document.querySelectorAll('input[name="etq-alerg"]').forEach(cb => cb.checked = false);
 
                 etiquetaModal.classList.remove('hidden');
+                etiquetaModal.classList.add('flex');
             };
 
             if(formGerarEtiqueta) {
@@ -2185,7 +2281,7 @@
 
                     // Lote
                     const dataLote = agora.toISOString().slice(0,10).replace(/-/g, '');
-                    const loteStr = `${dataLote}-${idFicha.slice(0,4).toUpperCase()}`;
+                    const loteStr = `${dataLote}-${(idFicha ? idFicha.slice(0,4) : 'ATVA').toUpperCase()}`;
 
                     // Preencher Container de Impressão
                     document.getElementById('print-etq-nome').textContent = nomeProduto.substring(0, 30);
@@ -2877,10 +2973,82 @@
                 return true;
             }
 
-            function gerarPDF(fichaId, incluirCustos) {
+            let currentPdfDoc = null;
+            let currentPdfBlobUrl = null;
+
+            function abrirModalPDF(doc, titulo, nomeArquivo) {
+                currentPdfDoc = doc;
+                const modal = document.getElementById('pdf-viewer-modal');
+                const iframe = document.getElementById('pdf-viewer-iframe');
+                const titleEl = document.getElementById('pdf-viewer-title');
+                if (!modal || !iframe) return;
+
+                if (currentPdfBlobUrl) {
+                    try { URL.revokeObjectURL(currentPdfBlobUrl); } catch(e) {}
+                    currentPdfBlobUrl = null;
+                }
+
+                const blob = doc.output('blob');
+                currentPdfBlobUrl = URL.createObjectURL(blob);
+                iframe.src = currentPdfBlobUrl;
+                if (titleEl) titleEl.textContent = titulo || 'Visualização do PDF';
+                modal.dataset.filename = nomeArquivo || 'ficha_tecnica.pdf';
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function fecharModalPDF() {
+                const modal = document.getElementById('pdf-viewer-modal');
+                const iframe = document.getElementById('pdf-viewer-iframe');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+                if (iframe) iframe.src = 'about:blank';
+                if (currentPdfBlobUrl) {
+                    try { URL.revokeObjectURL(currentPdfBlobUrl); } catch(e) {}
+                    currentPdfBlobUrl = null;
+                }
+            }
+
+            function gerarPDF(fichaOrId, incluirCustos) {
+                if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
+                    alert("A biblioteca jsPDF ainda não carregou. Tente novamente.");
+                    return;
+                }
                 const { jsPDF } = window.jspdf;
-                const ficha = receitasSalvas.find(f => f.id == fichaId);
-                if (!ficha) return;
+                let ficha = null;
+                if (typeof fichaOrId === 'object' && fichaOrId !== null) {
+                    ficha = fichaOrId;
+                } else if (fichaOrId) {
+                    ficha = receitasSalvas.find(f => f.id == fichaOrId);
+                }
+
+                if (!ficha) {
+                    const nome = document.getElementById('descricao-produto')?.value.trim();
+                    const temComponentes = fichaAtual && fichaAtual.componentes && fichaAtual.componentes.length > 0;
+                    if (!nome && !temComponentes) {
+                        alert("Preencha a descrição do prato ou adicione ingredientes antes de gerar o PDF.");
+                        return;
+                    }
+                    ficha = {
+                        header: {
+                            descricaoProduto: nome || 'FICHA SEM TÍTULO',
+                            categoria: document.getElementById('categoria-produto')?.value || '',
+                            subcategoria: document.getElementById('subcategoria-produto')?.value || '',
+                            rendimentoReceitaKg: parseFloat(rendimentoReceitaKgInput.value) || 1,
+                            tamanhoPorcaoG: parseFloat(tamanhoPorcaoGInput.value) || 100,
+                            modoPreparo: document.getElementById('modo-preparo')?.value || ''
+                        },
+                        componentes: (fichaAtual && fichaAtual.componentes) ? fichaAtual.componentes : [],
+                        custoTotal: (fichaAtual && fichaAtual.custoTotal) ? fichaAtual.custoTotal : 0,
+                        kcalTotal: fichaAtual ? fichaAtual.kcalTotal : 0,
+                        carbTotal: fichaAtual ? fichaAtual.carbTotal : 0,
+                        protTotal: fichaAtual ? fichaAtual.protTotal : 0,
+                        gordTotal: fichaAtual ? fichaAtual.gordTotal : 0
+                    };
+                }
 
                 const doc = new jsPDF();
                 
@@ -2898,10 +3066,10 @@
                     : ["Item", "Unid.", "Qtd. Liq.", "FC", "Qtd. Bruta"];
                 const tableRows = [];
 
-                ficha.componentes.forEach(item => {
+                (ficha.componentes || []).forEach(item => {
                     const itemData = incluirCustos
-                        ? [ item.nome, item.unidade, item.qtdeLiquida.toFixed(3), item.fatorCorrecao.toFixed(3), item.qtdeBruta.toFixed(3), `R$ ${item.custoUnitario.toFixed(2)}`, `R$ ${item.custoTotal.toFixed(2)}` ]
-                        : [ item.nome, item.unidade, item.qtdeLiquida.toFixed(3), item.fatorCorrecao.toFixed(3), item.qtdeBruta.toFixed(3) ];
+                        ? [ item.nome, item.unidade, Number(item.qtdeLiquida || 0).toFixed(3), Number(item.fatorCorrecao || 1).toFixed(3), Number(item.qtdeBruta || 0).toFixed(3), `R$ ${Number(item.custoUnitario || 0).toFixed(2)}`, `R$ ${Number(item.custoTotal || 0).toFixed(2)}` ]
+                        : [ item.nome, item.unidade, Number(item.qtdeLiquida || 0).toFixed(3), Number(item.fatorCorrecao || 1).toFixed(3), Number(item.qtdeBruta || 0).toFixed(3) ];
                     tableRows.push(itemData);
                 });
 
@@ -2916,14 +3084,12 @@
                 finalY = finalY + 16 + (splitPreparo.length * 4);
 
                 // --- Tabela Nutricional (Por Porção) ---
-                // Calcula on-the-fly caso seja uma ficha antiga que não tenha salvo kcalTotal
                 let currentKcalTotal = ficha.kcalTotal || 0;
                 let currentCarbTotal = ficha.carbTotal || 0;
                 let currentProtTotal = ficha.protTotal || 0;
                 let currentGordTotal = ficha.gordTotal || 0;
 
-                // Se não tem salvo, calcula agora
-                if (!ficha.kcalTotal) {
+                if (!ficha.kcalTotal && ficha.componentes) {
                     ficha.componentes.forEach(item => {
                         const ingDb = ingredientes.find(i => i.nome === item.nome);
                         if (ingDb) {
@@ -2936,7 +3102,7 @@
                 }
 
                 if (currentKcalTotal > 0) {
-                    let numPorcoes = (ficha.header.rendimentoReceitaKg * 1000) / ficha.header.tamanhoPorcaoG;
+                    let numPorcoes = (ficha.header.rendimentoReceitaKg * 1000) / (ficha.header.tamanhoPorcaoG || 100);
                     if(!numPorcoes || numPorcoes <= 0 || isNaN(numPorcoes)) numPorcoes = 1;
                     
                     const kcal = Math.round(currentKcalTotal / numPorcoes);
@@ -2975,17 +3141,18 @@
                 if (incluirCustos) {
                     doc.setFontSize(14);
                     doc.text("Resumo de Custos:", 14, finalY + 10);
-                    const custoPorKg = (ficha.custoTotal / ficha.header.rendimentoReceitaKg) || 0;
-                    const custoPorPorcao = custoPorKg * (ficha.header.tamanhoPorcaoG / 1000) || 0;
+                    const custoPorKg = (ficha.custoTotal / (ficha.header.rendimentoReceitaKg || 1)) || 0;
+                    const custoPorPorcao = custoPorKg * ((ficha.header.tamanhoPorcaoG || 100) / 1000) || 0;
                     doc.setFontSize(12);
-                    doc.text(`Custo Total da Ficha: R$ ${ficha.custoTotal.toFixed(2)}`, 14, finalY + 17);
+                    doc.text(`Custo Total da Ficha: R$ ${(ficha.custoTotal || 0).toFixed(2)}`, 14, finalY + 17);
                     doc.text(`Custo por Kg: R$ ${custoPorKg.toFixed(2)}`, 14, finalY + 24);
                     doc.text(`Custo por Porção: R$ ${custoPorPorcao.toFixed(2)}`, 14, finalY + 31);
                 }
 
                 const tipoFicha = incluirCustos ? "Custo" : "Operacional";
-                doc.autoPrint();
-                window.open(doc.output('bloburl'), '_blank');
+                const safeName = (ficha.header.descricaoProduto || 'Ficha').replace(/[^a-zA-Z0-9_-]/g, '_');
+                const filename = `Ficha_${tipoFicha}_${safeName}.pdf`;
+                abrirModalPDF(doc, `Ficha Técnica (${tipoFicha}) - ${ficha.header.descricaoProduto}`, filename);
             }
             
             async function callGeminiForRecipe() {
@@ -3471,6 +3638,55 @@
             inputMarkupPrato.addEventListener('input', calcularCustosFinais);
             rendimentoReceitaKgInput.addEventListener('input', calcularCustosFinais);
             tamanhoPorcaoGInput.addEventListener('input', calcularCustosFinais);
+
+            // Listeners da Barra de Ações da Ficha Técnica
+            document.getElementById('btn-pdf-custo-ficha')?.addEventListener('click', () => gerarPDF(null, true));
+            document.getElementById('btn-pdf-op-ficha')?.addEventListener('click', () => gerarPDF(null, false));
+            document.getElementById('btn-imprimir-ficha')?.addEventListener('click', () => {
+                gerarPDF(null, false);
+                setTimeout(() => {
+                    document.getElementById('btn-pdf-modal-imprimir')?.click();
+                }, 400);
+            });
+            document.getElementById('btn-etiqueta-ficha-view')?.addEventListener('click', () => window.abrirModalEtiqueta('ativa'));
+
+            // Listeners do Modal de PDF
+            document.getElementById('btn-close-pdf-modal')?.addEventListener('click', fecharModalPDF);
+            document.getElementById('pdf-viewer-modal')?.addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) fecharModalPDF();
+            });
+            document.getElementById('btn-pdf-modal-imprimir')?.addEventListener('click', () => {
+                const iframe = document.getElementById('pdf-viewer-iframe');
+                if (iframe && iframe.contentWindow) {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                        return;
+                    } catch(err) {
+                        console.warn('Iframe print fallback:', err);
+                    }
+                }
+                if (currentPdfDoc) {
+                    currentPdfDoc.autoPrint();
+                    const pUrl = currentPdfDoc.output('bloburl');
+                    window.open(pUrl, '_blank');
+                }
+            });
+            document.getElementById('btn-pdf-modal-download')?.addEventListener('click', () => {
+                if (currentPdfDoc) {
+                    const modal = document.getElementById('pdf-viewer-modal');
+                    const filename = modal?.dataset.filename || 'ficha_tecnica.pdf';
+                    currentPdfDoc.save(filename);
+                }
+            });
+            document.getElementById('btn-pdf-modal-fallback')?.addEventListener('click', () => {
+                if (currentPdfBlobUrl) {
+                    window.open(currentPdfBlobUrl, '_blank');
+                }
+            });
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') fecharModalPDF();
+            });
             
             // --- LÓGICA DE IMPORTAÇÃO DE INGREDIENTES ---
             const btnAutoGerarIngredientes = document.getElementById('btn-auto-gerar-ingredientes');
@@ -4328,6 +4544,10 @@
             });
 
             logoutBtn.addEventListener('click', async () => {
+                try {
+                    localStorage.removeItem('cmv_user_logged');
+                    localStorage.removeItem('cmv_active_view');
+                } catch(e) {}
                 await signOut(auth);
             });
 
@@ -4589,12 +4809,18 @@
                             console.error("Erro ao ouvir documento do usuário:", error);
                         });
 
+                        try { localStorage.setItem('cmv_user_logged', 'true'); } catch(e) {}
+                        document.documentElement.classList.remove('cmv-pre-auth');
+                        const preLoader = document.getElementById('app-pre-loader');
+                        if (preLoader) { preLoader.style.display = 'none'; preLoader.classList.add('hidden'); }
                         authView.style.display = 'none';
                         const subView = document.getElementById('subscription-view');
                         if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
                         appContainer.style.display = 'flex';
                         setupRealtimeListeners(); 
-                        showView('dashboard');
+                        let lastView = 'dashboard';
+                        try { lastView = localStorage.getItem('cmv_active_view') || 'dashboard'; } catch(e) {}
+                        showView(lastView);
                     } else {
                         if (userDocUnsubscribe) {
                             userDocUnsubscribe();
@@ -4602,6 +4828,10 @@
                         }
                         restaurantId = null;
                         console.log("No user signed in.");
+                        try { localStorage.removeItem('cmv_user_logged'); } catch(e) {}
+                        document.documentElement.classList.remove('cmv-pre-auth');
+                        const preLoader = document.getElementById('app-pre-loader');
+                        if (preLoader) { preLoader.style.display = 'none'; preLoader.classList.add('hidden'); }
                         authView.style.display = 'flex';
                         appContainer.style.display = 'none';
                         const subView = document.getElementById('subscription-view');
