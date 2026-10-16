@@ -178,6 +178,7 @@
     <script src="taco-data.js"></script>
     <script src="smart-ingredients.js"></script>
     <script src="tour.js"></script>
+    <script src="assistant.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -332,7 +333,11 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
                     <h2 id="header-subtitle" class="text-xl md:text-3xl font-bold">Dashboard</h2>
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <button id="btn-header-voice" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-all font-medium text-xs sm:text-sm border border-blue-200 dark:border-blue-800" title="Assistente por Voz CMV.IA">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                            <span class="hidden sm:inline">Assistente</span>
+                        </button>
                         <button data-view="settings" class="text-secondary hover:text-blue-600" title="Configurações">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </button>
@@ -1453,6 +1458,28 @@
                 });
             });
             document.querySelector('button[data-view="settings"]').addEventListener('click', () => showView('settings'));
+
+            // Ponte de integração para o Assistente por Voz
+            window.cmvApp = {
+                getIngredientes: () => ingredientes,
+                getReceitasSalvas: () => receitasSalvas,
+                showView: (viewId) => showView(viewId),
+                limparFicha: () => limparFicha(),
+                adicionarItemPorVoz: (refId, qtdeLiquida) => {
+                    showView('fichas');
+                    const sel = document.getElementById('select-item');
+                    const qtdInput = document.getElementById('quantidade-receita');
+                    const form = document.getElementById('form-receita');
+                    if (sel && qtdInput && form) {
+                        sel.value = refId;
+                        sel.dispatchEvent(new Event('change'));
+                        qtdInput.value = qtdeLiquida;
+                        form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                        return true;
+                    }
+                    return false;
+                }
+            };
 
             // --- FUNÇÕES DE CATEGORIA ---
             function renderCategoryList(list, container, colorClass, type) {
@@ -4391,6 +4418,58 @@
         });
     </script>
     
+    <!-- Floating Action Button do Assistente por Voz -->
+    <button id="btn-fab-voice" class="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3.5 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all duration-200 flex items-center justify-center group focus:outline-none" title="Assistente por Voz CMV.IA">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+        <span class="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ease-in-out text-xs font-semibold px-0 group-hover:px-2">Falar com Assistente</span>
+    </button>
+
+    <!-- Floating Card do Assistente por Voz -->
+    <div id="voice-assistant-card" class="fixed bottom-20 right-4 sm:right-6 z-50 hidden max-w-sm w-[calc(100vw-2rem)] sm:w-96 bg-card border border-border-color shadow-2xl rounded-2xl p-4 transition-all duration-300">
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-2 border-b border-border-color">
+            <div class="flex items-center gap-2">
+                <span class="relative flex h-3 w-3">
+                  <span id="voice-ping-indicator" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 hidden"></span>
+                  <span id="voice-dot-indicator" class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                </span>
+                <span class="font-bold text-sm text-blue-600 flex items-center gap-1">
+                    Assistente CMV.IA
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btn-voice-mute" class="text-secondary hover:text-primary text-xs p-1" title="Ativar/Desativar voz">
+                    🔊
+                </button>
+                <button id="btn-close-voice-card" class="text-secondary hover:text-red-500 text-lg font-bold p-1 leading-none">&times;</button>
+            </div>
+        </div>
+
+        <!-- Status & Transcript -->
+        <div class="py-3">
+            <div id="voice-status-text" class="text-xs text-secondary mb-1 flex items-center gap-1">
+                <span>🎙️ Ouvindo... Fale seu comando</span>
+            </div>
+            <div id="voice-transcript-text" class="text-sm font-medium text-primary italic min-h-[3rem] max-h-24 overflow-y-auto bg-form-bg p-2.5 rounded-lg border border-border-color flex items-center">
+                "Fale algo como: 'coloque 200g de contrafilé' ou 'criar categoria'..."
+            </div>
+            <div id="voice-action-badge" class="text-xs font-semibold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 p-2 rounded-lg border border-green-200 dark:border-green-800 mt-2 hidden">
+                <!-- Mensagem de ação -->
+            </div>
+        </div>
+
+        <!-- Sugestões Rápidas -->
+        <div class="border-t border-border-color pt-2">
+            <div class="text-[10px] text-secondary font-semibold uppercase mb-1.5">Sugestões de comandos:</div>
+            <div class="flex flex-wrap gap-1.5 text-xs">
+                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="criar categoria">"Criar categoria"</button>
+                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="fazer ficha tecnica">"Fazer ficha"</button>
+                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="banco de ingredientes">"Ingredientes"</button>
+                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="coloque duzentas gramas de contra file">"Coloque 200g contrafilé"</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Script para registrar o Service Worker do PWA -->
     <script>
       if ('serviceWorker' in navigator) {

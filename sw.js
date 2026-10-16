@@ -1,10 +1,11 @@
-﻿const CACHE_NAME = "cmv-ia-cache-v3";
+const CACHE_NAME = "cmv-ia-cache-v4";
 const urlsToCache = [
   "./",
   "./index.html",
   "./taco-data.js",
   "./smart-ingredients.js",
-  "./tour.js"
+  "./tour.js",
+  "./assistant.js"
 ];
 
 self.addEventListener("install", event => {
