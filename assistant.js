@@ -246,6 +246,131 @@
         return bestItem ? { item: bestItem, type: bestType, score: bestScore } : null;
     }
 
+    // Busca o produto de venda direta mais similar
+    function findBestProdutoVenda(query, produtos) {
+        const q = normalize(query);
+        if (!q || !Array.isArray(produtos)) return null;
+        const qTokens = q.split(' ').filter(Boolean);
+
+        let bestProd = null;
+        let bestScore = -1;
+
+        for (const prod of produtos) {
+            const nameNorm = normalize(prod.nome);
+            let score = 0;
+            if (nameNorm === q) score = 1000;
+            else if (nameNorm.startsWith(q)) score = 500;
+            else if (nameNorm.includes(q)) score = 300;
+            else {
+                let matched = 0;
+                for (const tok of qTokens) {
+                    if (nameNorm.includes(tok)) matched++;
+                }
+                if (matched > 0) score = (matched / qTokens.length) * 200;
+            }
+
+            if (score > bestScore && score >= 100) {
+                bestScore = score;
+                bestProd = prod;
+            }
+        }
+        return bestProd;
+    }
+
+    // Resolve ou cria a categoria de venda direta
+    async function resolveDirectSaleCategory(query, app) {
+        let q = normalize(query);
+        q = q.replace(/\b(categoria|de|do|da|dos|das|por favor|pra mim)\b/g, '').trim();
+        if (!q) return null;
+
+        const categories = app && typeof app.getDirectSaleCategories === 'function' ? app.getDirectSaleCategories() : [];
+        
+        let matchedCat = categories.find(c => normalize(c) === q);
+        if (!matchedCat) {
+            matchedCat = categories.find(c => normalize(c).includes(q) || q.includes(normalize(c)));
+        }
+
+        if (matchedCat) {
+            const catSelect = document.getElementById('categoria-produto-venda');
+            if (catSelect) catSelect.value = matchedCat;
+            return matchedCat;
+        }
+
+        if (app && typeof app.adicionarCategoriaVendaDireta === 'function') {
+            const rawCatName = query.toUpperCase().replace(/\bCATEGORIA\b/i, '').trim();
+            const newCat = await app.adicionarCategoriaVendaDireta(rawCatName || query.toUpperCase());
+            return newCat;
+        }
+
+        return null;
+    }
+
+    // Valida os campos do produto de venda direta e salva se estiver tudo preenchido,
+    // ou pergunta especificamente pelo campo que falta.
+    async function validateAndSaveProdutoVenda(app) {
+        const nomeInput = document.getElementById('nome-produto-venda');
+        const catSelect = document.getElementById('categoria-produto-venda');
+        const compraInput = document.getElementById('preco-compra-venda');
+        const vendaInput = document.getElementById('preco-venda-venda');
+        const form = document.getElementById('form-produto-venda');
+
+        if (!nomeInput || !form) return;
+
+        const nomeVal = nomeInput.value.trim();
+        const catVal = catSelect ? catSelect.value.trim() : '';
+        const compraVal = compraInput ? parseFloat(compraInput.value) : NaN;
+        const vendaVal = vendaInput ? parseFloat(vendaInput.value) : NaN;
+
+        if (!nomeVal) {
+            conversationState = { step: 'AWAITING_VENDA_FIELD_NAME', data: {} };
+            const msg = 'Qual o nome do produto?';
+            nomeInput.focus();
+            showFeedback('❓ ' + msg);
+            speak(msg);
+            return;
+        }
+
+        if (!catVal) {
+            conversationState = { step: 'AWAITING_VENDA_FIELD_CATEGORY', data: {} };
+            const msg = 'Qual a categoria do produto?';
+            if (catSelect) {
+                catSelect.scrollIntoView({ behavior: 'smooth' });
+                catSelect.focus();
+            }
+            showFeedback('❓ ' + msg);
+            speak(msg);
+            return;
+        }
+
+        if (isNaN(compraVal) || compraVal <= 0) {
+            conversationState = { step: 'AWAITING_VENDA_FIELD_PRECO_COMPRA', data: {} };
+            const msg = 'Qual o preço de compra?';
+            if (compraInput) compraInput.focus();
+            showFeedback('❓ ' + msg);
+            speak(msg);
+            return;
+        }
+
+        if (isNaN(vendaVal) || vendaVal <= 0) {
+            conversationState = { step: 'AWAITING_VENDA_FIELD_PRECO_VENDA', data: {} };
+            const msg = 'Qual o preço de venda?';
+            if (vendaInput) vendaInput.focus();
+            showFeedback('❓ ' + msg);
+            speak(msg);
+            return;
+        }
+
+        // Todos os campos estão preenchidos! Salva agora!
+        conversationState = { step: null, data: {} };
+        window.salvandoPorVoz = true;
+        form.requestSubmit();
+        setTimeout(() => { window.salvandoPorVoz = false; }, 500);
+
+        const msg = `Produto ${nomeVal} salvo com sucesso!`;
+        showFeedback('🛒 ' + msg);
+        speak(msg);
+    }
+
     // Síntese de voz com proteção contra GC e desbloqueio
     function speak(text) {
         if (!('speechSynthesis' in window) || isMuted) return;
@@ -311,6 +436,9 @@
         if (t === 'cancelar' || t === 'esquece' || t === 'cancela' || (isModalEtqOpen && (t === 'fechar' || t === 'sair' || t.includes('fechar etiqueta')))) {
             if (isModalEtqOpen && app && typeof app.fecharModalEtiqueta === 'function') {
                 app.fecharModalEtiqueta();
+            }
+            if (currentView === 'venda-direta' && app && typeof app.resetarFormProdutoVenda === 'function') {
+                app.resetarFormProdutoVenda();
             }
             conversationState = { step: null, data: {} };
             const msg = isModalEtqOpen ? 'Etiqueta fechada.' : 'Operação cancelada.';
@@ -427,6 +555,145 @@
                 }
             } else {
                 const msg = `Não encontrei "${rawText}". Diga o nome de uma receita ou ingrediente cadastrado, ou diga "cancelar".`;
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: CADASTRO CONVERSACIONAL DE PRODUTO VENDA DIRETA
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_VENDA_PROD_NAME') {
+            const nomeInput = document.getElementById('nome-produto-venda');
+            if (nomeInput) nomeInput.value = rawText.toUpperCase();
+            
+            const catSelect = document.getElementById('categoria-produto-venda');
+            if (catSelect) {
+                catSelect.scrollIntoView({ behavior: 'smooth' });
+                catSelect.focus();
+            }
+            
+            conversationState = { step: 'AWAITING_VENDA_PROD_CATEGORY', data: { nome: rawText.toUpperCase() } };
+            const msg = `Produto definido como ${rawText.toUpperCase()}. Qual a categoria do produto?`;
+            showFeedback('🏷️ ' + msg);
+            speak(msg);
+            return;
+        }
+
+        if (conversationState.step === 'AWAITING_VENDA_PROD_CATEGORY') {
+            const cat = await resolveDirectSaleCategory(rawText, app);
+            const compraInput = document.getElementById('preco-compra-venda');
+            if (compraInput) compraInput.focus();
+
+            conversationState = { step: 'AWAITING_VENDA_PROD_PRECO_COMPRA', data: { ...conversationState.data, categoria: cat } };
+            const catName = cat || rawText.toUpperCase();
+            const msg = `Categoria definida como ${catName}. Qual o preço de compra?`;
+            showFeedback('💰 ' + msg);
+            speak(msg);
+            return;
+        }
+
+        if (conversationState.step === 'AWAITING_VENDA_PROD_PRECO_COMPRA') {
+            const price = parsePriceNumber(rawText);
+            if (price !== null && price > 0) {
+                const compraInput = document.getElementById('preco-compra-venda');
+                if (compraInput) compraInput.value = price.toFixed(2);
+                const vendaInput = document.getElementById('preco-venda-venda');
+                if (vendaInput) vendaInput.focus();
+
+                conversationState = { step: 'AWAITING_VENDA_PROD_PRECO_VENDA', data: { ...conversationState.data, precoCompra: price } };
+                const priceFmt = price.toFixed(2).replace('.', ',');
+                const msg = `Preço de compra: R$ ${priceFmt}. Qual o preço de venda?`;
+                showFeedback('💲 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                const msg = 'Não entendi o valor. Fale o preço de compra, por exemplo: "3 reais" ou "2 e 50".';
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        if (conversationState.step === 'AWAITING_VENDA_PROD_PRECO_VENDA') {
+            const price = parsePriceNumber(rawText);
+            if (price !== null && price > 0) {
+                const vendaInput = document.getElementById('preco-venda-venda');
+                if (vendaInput) vendaInput.value = price.toFixed(2);
+
+                conversationState = { step: 'AWAITING_VENDA_CONFIRM_SAVE', data: { ...conversationState.data, precoVenda: price } };
+                const priceFmt = price.toFixed(2).replace('.', ',');
+                const msg = `Preço de venda: R$ ${priceFmt}. Deseja salvar o produto agora?`;
+                showFeedback('❓ ' + msg);
+                speak(msg);
+                return;
+            } else {
+                const msg = 'Não entendi o valor. Fale o preço de venda, por exemplo: "7 reais" ou "6 e 50".';
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        if (conversationState.step === 'AWAITING_VENDA_CONFIRM_SAVE') {
+            if (t.includes('sim') || t.includes('salvar') || t.includes('pode') || t.includes('salva') || t.includes('confirma') || t === 's') {
+                await validateAndSaveProdutoVenda(app);
+                return;
+            } else if (t.includes('nao') || t.includes('cancela') || t.includes('descarta') || t === 'n') {
+                conversationState = { step: null, data: {} };
+                const msg = 'Operação cancelada.';
+                showFeedback('❌ ' + msg, false);
+                speak(msg);
+                return;
+            } else {
+                const msg = 'Deseja salvar o produto de venda direta? Responda sim ou não.';
+                showFeedback('❓ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: PREENCHIMENTO DE CAMPOS FALTANTES PARA SALVAR
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_VENDA_FIELD_NAME') {
+            const nomeInput = document.getElementById('nome-produto-venda');
+            if (nomeInput) nomeInput.value = rawText.toUpperCase();
+            await validateAndSaveProdutoVenda(app);
+            return;
+        }
+
+        if (conversationState.step === 'AWAITING_VENDA_FIELD_CATEGORY') {
+            await resolveDirectSaleCategory(rawText, app);
+            await validateAndSaveProdutoVenda(app);
+            return;
+        }
+
+        if (conversationState.step === 'AWAITING_VENDA_FIELD_PRECO_COMPRA') {
+            const price = parsePriceNumber(rawText);
+            if (price !== null && price > 0) {
+                const compraInput = document.getElementById('preco-compra-venda');
+                if (compraInput) compraInput.value = price.toFixed(2);
+                await validateAndSaveProdutoVenda(app);
+                return;
+            } else {
+                const msg = 'Não entendi o valor. Fale o preço de compra, por exemplo: "3 reais" ou "2 e 50".';
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        if (conversationState.step === 'AWAITING_VENDA_FIELD_PRECO_VENDA') {
+            const price = parsePriceNumber(rawText);
+            if (price !== null && price > 0) {
+                const vendaInput = document.getElementById('preco-venda-venda');
+                if (vendaInput) vendaInput.value = price.toFixed(2);
+                await validateAndSaveProdutoVenda(app);
+                return;
+            } else {
+                const msg = 'Não entendi o valor. Fale o preço de venda, por exemplo: "7 reais" ou "5 reais".';
                 showFeedback('⚠️ ' + msg, false);
                 speak(msg);
                 return;
@@ -720,15 +987,9 @@
             }
 
             // CONTEXTO 4: Produtos de Venda Direta
-            if (currentView === 'venda-direta') {
-                const formVenda = document.getElementById('form-produto-venda');
-                if (formVenda) {
-                    formVenda.requestSubmit();
-                    const msg = 'Produto de venda direta salvo com sucesso!';
-                    showFeedback('🛒 ' + msg);
-                    speak(msg);
-                    return;
-                }
+            if (currentView === 'venda-direta' || t.includes('produto de venda') || t === 'salvar produto') {
+                await validateAndSaveProdutoVenda(app);
+                return;
             }
 
             // CONTEXTO 5: Tabela de Preços de Venda
@@ -1109,6 +1370,143 @@
             return;
         }
 
+        // ============================================================
+        // COMANDOS DIRETOS: CADASTRAR PRODUTO DE VENDA DIRETA
+        // ============================================================
+        const isCadastrarVendaCmd = t.includes('cadastrar produto de venda') || 
+                                   t.includes('novo produto de venda') || 
+                                   t.includes('cadastrar novo produto de venda') ||
+                                   t.includes('adicionar produto de venda') ||
+                                   t.includes('cadastrar produto venda direta') ||
+                                   t.includes('novo produto venda direta') ||
+                                   t === 'cadastrar produto' || t === 'novo produto' ||
+                                   t === 'cadastrar um produto' || t === 'novo produto de venda direta' ||
+                                   (currentView === 'venda-direta' && (t.startsWith('cadastrar ') || t.startsWith('novo produto')));
+
+        if (isCadastrarVendaCmd) {
+            if (app) app.showView('venda-direta');
+            if (app && typeof app.resetarFormProdutoVenda === 'function') app.resetarFormProdutoVenda();
+
+            // Verificar se o usuário já falou o nome do produto no mesmo comando
+            let prodName = t.replace(/^(quero\s+)?(cadastrar|adicionar|incluir)\s+(um\s+|o\s+)?(novo\s+)?(produto\s+)?(de\s+venda\s+direta|de\s+venda|venda\s+direta)?\s*/i, '');
+            prodName = prodName.replace(/\b(de venda direta|de venda|venda direta|por favor|pra mim)\b/g, '').trim();
+
+            if (prodName.length > 2 && prodName !== 'produto' && prodName !== 'novo produto') {
+                const nomeInput = document.getElementById('nome-produto-venda');
+                if (nomeInput) nomeInput.value = prodName.toUpperCase();
+                const catSelect = document.getElementById('categoria-produto-venda');
+                if (catSelect) {
+                    catSelect.scrollIntoView({ behavior: 'smooth' });
+                    catSelect.focus();
+                }
+                conversationState = { step: 'AWAITING_VENDA_PROD_CATEGORY', data: { nome: prodName.toUpperCase() } };
+                const msg = `Produto definido como ${prodName.toUpperCase()}. Qual a categoria do produto?`;
+                showFeedback('🏷️ ' + msg);
+                speak(msg);
+                return;
+            } else {
+                conversationState = { step: 'AWAITING_VENDA_PROD_NAME', data: {} };
+                const nomeInput = document.getElementById('nome-produto-venda');
+                if (nomeInput) nomeInput.focus();
+                const msg = 'Abrindo produtos de venda direta. Qual o nome do produto?';
+                showFeedback('🛒 ' + msg);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ============================================================
+        // COMANDOS DIRETOS: ABRIR / EDITAR PRODUTO DE VENDA DIRETA
+        // ============================================================
+        const isEditVendaCmd = t.startsWith('abrir produto ') || t.startsWith('editar produto ') || 
+                               t.startsWith('alterar produto ') || t.startsWith('carregar produto ') ||
+                               t.startsWith('abrir o produto ') || t.startsWith('editar o produto ') ||
+                               t.startsWith('alterar o produto ') ||
+                               (currentView === 'venda-direta' && (t.startsWith('abrir ') || t.startsWith('editar ') || t.startsWith('alterar ')));
+
+        if (isEditVendaCmd) {
+            let queryProd = t.replace(/^(abrir|editar|alterar|carregar)\s+(o\s+|a\s+)?(produto\s+)?(de\s+venda\s+direta\s+|de\s+venda\s+)?/i, '').trim();
+            queryProd = queryProd.replace(/\b(de venda direta|de venda|venda direta|por favor)\b/g, '').trim();
+
+            const produtos = app && typeof app.getProdutosVendaDireta === 'function' ? app.getProdutosVendaDireta() : [];
+            const match = findBestProdutoVenda(queryProd, produtos);
+
+            if (match && app && typeof app.carregarProdutoVendaParaEdicao === 'function') {
+                app.carregarProdutoVendaParaEdicao(match.id);
+                conversationState = { step: null, data: { prodEditando: match } };
+                const msg = `Produto ${match.nome} carregado para edição. O que você deseja alterar?`;
+                showFeedback('✏️ ' + msg);
+                speak(msg);
+                return;
+            } else {
+                const msg = `Não encontrei "${queryProd}" nos produtos de venda direta.`;
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ============================================================
+        // AJUSTES PONTUAIS DE CAMPOS NA TELA DE VENDA DIRETA
+        // ============================================================
+        if (currentView === 'venda-direta') {
+            // Mudar preço de venda
+            if (t.includes('preco de venda') || t.includes('valor de venda') || t.startsWith('venda para') || t.startsWith('venda ')) {
+                const price = parsePriceNumber(rawText);
+                if (price !== null && price > 0) {
+                    const vendaInput = document.getElementById('preco-venda-venda');
+                    if (vendaInput) {
+                        vendaInput.value = price.toFixed(2);
+                        vendaInput.dispatchEvent(new Event('input'));
+                    }
+                    const msg = `Preço de venda alterado para R$ ${price.toFixed(2).replace('.', ',')}.`;
+                    showFeedback('💲 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // Mudar preço de compra
+            if (t.includes('preco de compra') || t.includes('custo') || t.startsWith('compra para') || t.startsWith('compra ')) {
+                const price = parsePriceNumber(rawText);
+                if (price !== null && price > 0) {
+                    const compraInput = document.getElementById('preco-compra-venda');
+                    if (compraInput) {
+                        compraInput.value = price.toFixed(2);
+                        compraInput.dispatchEvent(new Event('input'));
+                    }
+                    const msg = `Preço de compra alterado para R$ ${price.toFixed(2).replace('.', ',')}.`;
+                    showFeedback('💰 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // Mudar categoria
+            if (t.startsWith('mudar categoria para ') || t.startsWith('categoria ') || t.startsWith('alterar categoria para ')) {
+                const catQuery = rawText.replace(/^(mudar\s+categoria\s+para|alterar\s+categoria\s+para|categoria)\s*/i, '').trim();
+                const cat = await resolveDirectSaleCategory(catQuery, app);
+                const msg = `Categoria alterada para ${cat || catQuery.toUpperCase()}.`;
+                showFeedback('🏷️ ' + msg);
+                speak(msg);
+                return;
+            }
+
+            // Mudar nome
+            if (t.startsWith('mudar nome para ') || t.startsWith('nome do produto ') || t.startsWith('alterar nome para ')) {
+                const nomeQuery = rawText.replace(/^(mudar\s+nome\s+para|alterar\s+nome\s+para|nome\s+do\s+produto)\s*/i, '').trim();
+                const nomeInput = document.getElementById('nome-produto-venda');
+                if (nomeInput && nomeQuery) {
+                    nomeInput.value = nomeQuery.toUpperCase();
+                    nomeInput.dispatchEvent(new Event('input'));
+                    const msg = `Nome alterado para ${nomeQuery.toUpperCase()}.`;
+                    showFeedback('✏️ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+        }
+
         if (t.includes('venda direta') || t.includes('produtos de venda')) {
             if (app) app.showView('venda-direta');
             const msg = 'Abrindo produtos de venda direta.';
@@ -1217,6 +1615,8 @@
         let contextualHelp = 'Não entendi o comando. Pode repetir?';
         if (isModalEtqOpen) {
             contextualHelp = 'Você está na configuração da etiqueta. Diga "imprimir agora", mude para "congelado" ou diga "cancelar".';
+        } else if (currentView === 'venda-direta') {
+            contextualHelp = 'Você está em produtos de venda direta. Diga "cadastrar novo produto", "editar [produto]" ou "salvar".';
         } else if (currentView === 'etiquetas') {
             contextualHelp = 'Você está na tela de etiquetas. Diga "imprimir etiqueta de [produto]" ou "voltar ao início".';
         } else if (currentView === 'fichas') {

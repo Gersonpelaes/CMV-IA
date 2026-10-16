@@ -1,4 +1,4 @@
-const CACHE_NAME = "cmv-ia-cache-v8";
+const CACHE_NAME = "cmv-ia-cache-v9";
 const urlsToCache = [
   "./",
   "./index.html",

@@ -580,16 +580,20 @@
                         </div>
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div class="lg:col-span-1">
-                                 <form id="form-produto-venda" class="space-y-4">
-                                    <h3 class="text-xl font-semibold">Novo Produto</h3>
-                                    <div><label for="nome-produto-venda" class="block text-sm font-medium text-secondary">Nome do Produto</label><input type="text" id="nome-produto-venda" placeholder="Ex: COCA-COLA LATA" required class="mt-1 form-input"></div>
+                                  <form id="form-produto-venda" class="space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <h3 id="titulo-form-produto-venda" class="text-xl font-semibold">Novo Produto</h3>
+                                        <button type="button" id="btn-cancelar-edit-produto-venda" class="hidden text-xs text-red-600 hover:text-red-800 font-medium transition-colors">Cancelar Edição</button>
+                                    </div>
+                                    <input type="hidden" id="id-produto-venda" value="">
+                                    <div><label for="nome-produto-venda" class="block text-sm font-medium text-secondary">Nome do Produto</label><input type="text" id="nome-produto-venda" placeholder="Ex: COCA-COLA LATA" required class="mt-1 form-input uppercase"></div>
                                     <div><label for="categoria-produto-venda" class="block text-sm font-medium text-secondary">Categoria</label><select id="categoria-produto-venda" required class="mt-1 form-select"></select></div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div><label for="preco-compra-venda" class="block text-sm font-medium text-secondary">Preço Compra (R$)</label><input type="number" step="0.01" id="preco-compra-venda" placeholder="2.50" required class="mt-1 form-input"></div>
                                         <div><label for="preco-venda-venda" class="block text-sm font-medium text-secondary">Preço Venda (R$)</label><input type="number" step="0.01" id="preco-venda-venda" placeholder="5.00" required class="mt-1 form-input"></div>
                                     </div>
                                     <div><label for="taxa-perda-venda" class="block text-sm font-medium text-secondary">Taxa de Perda (%)</label><input type="number" step="0.1" id="taxa-perda-venda" value="0" class="mt-1 form-input"></div>
-                                    <button type="submit" class="w-full btn-primary">Salvar Produto</button>
+                                    <button type="submit" id="btn-submit-produto-venda" class="w-full btn-primary">Salvar Produto</button>
                                 </form>
                             </div>
                             <div class="lg:col-span-2">
@@ -1468,6 +1472,20 @@
                 getFichaAtual: () => fichaAtual,
                 getIngredientes: () => ingredientes,
                 getReceitasSalvas: () => receitasSalvas,
+                getProdutosVendaDireta: () => produtosVendaDireta,
+                getDirectSaleCategories: () => directSaleCategories,
+                carregarProdutoVendaParaEdicao: (id) => carregarProdutoVendaParaEdicao(id),
+                resetarFormProdutoVenda: () => resetarFormProdutoVenda(),
+                adicionarCategoriaVendaDireta: async (novaCat) => {
+                    const catUpper = novaCat.trim().toUpperCase();
+                    if (!directSaleCategories.includes(catUpper)) {
+                        directSaleCategories.push(catUpper);
+                        populateDirectSaleCategoryDropdown();
+                        if (typeof saveCategories === 'function') await saveCategories();
+                    }
+                    if (categoriaProdutoVendaSelect) categoriaProdutoVendaSelect.value = catUpper;
+                    return catUpper;
+                },
                 showView: (viewId) => showView(viewId),
                 limparFicha: () => limparFicha(),
                 carregarFicha: (id) => carregarFicha(id),
@@ -1845,6 +1863,58 @@
                 popularDropdownItens();
             }
 
+            function carregarProdutoVendaParaEdicao(id) {
+                const prod = produtosVendaDireta.find(p => p.id == id);
+                if (!prod) return false;
+                showView('venda-direta');
+
+                const idInput = document.getElementById('id-produto-venda');
+                if (idInput) idInput.value = prod.id;
+
+                const nomeInput = document.getElementById('nome-produto-venda');
+                if (nomeInput) nomeInput.value = prod.nome;
+
+                if (prod.category && !directSaleCategories.includes(prod.category)) {
+                    directSaleCategories.push(prod.category);
+                    populateDirectSaleCategoryDropdown();
+                }
+                const catSelect = document.getElementById('categoria-produto-venda');
+                if (catSelect) catSelect.value = prod.category;
+
+                const compraInput = document.getElementById('preco-compra-venda');
+                if (compraInput) compraInput.value = prod.precoCompra !== undefined ? prod.precoCompra : '';
+
+                const vendaInput = document.getElementById('preco-venda-venda');
+                if (vendaInput) vendaInput.value = prod.precoVenda !== undefined ? prod.precoVenda : '';
+
+                const taxaInput = document.getElementById('taxa-perda-venda');
+                if (taxaInput) taxaInput.value = prod.taxaPerda || 0;
+
+                const title = document.getElementById('titulo-form-produto-venda');
+                if (title) title.textContent = `Editar: ${prod.nome}`;
+
+                const btnSubmit = document.getElementById('btn-submit-produto-venda') || (formProdutoVenda && formProdutoVenda.querySelector('button[type="submit"]'));
+                if (btnSubmit) btnSubmit.textContent = 'Salvar Alterações';
+
+                const btnCancel = document.getElementById('btn-cancelar-edit-produto-venda');
+                if (btnCancel) btnCancel.classList.remove('hidden');
+
+                if (nomeInput) nomeInput.focus();
+                return true;
+            }
+
+            function resetarFormProdutoVenda() {
+                if (formProdutoVenda) formProdutoVenda.reset();
+                const idInput = document.getElementById('id-produto-venda');
+                if (idInput) idInput.value = '';
+                const title = document.getElementById('titulo-form-produto-venda');
+                if (title) title.textContent = 'Novo Produto';
+                const btnSubmit = document.getElementById('btn-submit-produto-venda') || (formProdutoVenda && formProdutoVenda.querySelector('button[type="submit"]'));
+                if (btnSubmit) btnSubmit.textContent = 'Salvar Produto';
+                const btnCancel = document.getElementById('btn-cancelar-edit-produto-venda');
+                if (btnCancel) btnCancel.classList.add('hidden');
+            }
+
             function renderizarProdutosVendaDireta() {
                 listaProdutosVendaDiv.innerHTML = '';
                 
@@ -1871,10 +1941,11 @@
                     
                     grouped[category].sort((a, b) => a.nome.localeCompare(b.nome)).forEach(prod => {
                         const li = document.createElement('li');
-                        li.className = 'bg-form-bg p-3 rounded-lg flex justify-between items-center border border-border-color';
+                        li.className = 'bg-form-bg p-3 rounded-lg flex justify-between items-center border border-border-color hover:border-blue-400 transition-colors group cursor-pointer';
+                        li.onclick = () => carregarProdutoVendaParaEdicao(prod.id);
                         li.innerHTML = `
                             <div>
-                                <span class="font-semibold">${prod.nome}</span>
+                                <span class="font-semibold flex items-center gap-2">${prod.nome} <span class="text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-normal opacity-75 group-hover:opacity-100">✏️ Editar</span></span>
                                 <div class="text-xs text-secondary">Compra: R$ ${prod.precoCompra.toFixed(2)} | Venda: R$ ${prod.precoVenda.toFixed(2)}</div>
                             </div>
                             <div class="text-right">
@@ -3267,22 +3338,34 @@
             formProdutoVenda.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const form = e.target;
+                const idProd = document.getElementById('id-produto-venda')?.value;
                 const newProduct = {
-                    nome: form['nome-produto-venda'].value.toUpperCase(),
+                    nome: form['nome-produto-venda'].value.toUpperCase().trim(),
                     category: form['categoria-produto-venda'].value,
                     precoCompra: parseFloat(form['preco-compra-venda'].value),
                     precoVenda: parseFloat(form['preco-venda-venda'].value),
                     taxaPerda: parseFloat(form['taxa-perda-venda'].value) || 0
                 };
-                 try {
-                    await addDoc(collection(db, getCollectionPath('direct_sale_products')), newProduct);
-                    alert('Produto salvo com sucesso!');
-                    form.reset();
+                try {
+                    if (idProd) {
+                        const prodRef = doc(db, getCollectionPath('direct_sale_products'), idProd);
+                        await updateDoc(prodRef, newProduct);
+                        if (!window.salvandoPorVoz) alert('Produto atualizado com sucesso!');
+                    } else {
+                        await addDoc(collection(db, getCollectionPath('direct_sale_products')), newProduct);
+                        if (!window.salvandoPorVoz) alert('Produto salvo com sucesso!');
+                    }
+                    resetarFormProdutoVenda();
                 } catch (error) {
                     console.error("Erro ao salvar produto:", error);
-                    alert(`Falha ao salvar produto: ${error.message}`);
+                    if (!window.salvandoPorVoz) alert(`Falha ao salvar produto: ${error.message}`);
                 }
             });
+
+            const btnCancelEditProd = document.getElementById('btn-cancelar-edit-produto-venda');
+            if (btnCancelEditProd) {
+                btnCancelEditProd.addEventListener('click', resetarFormProdutoVenda);
+            }
 
             selectItem.addEventListener('change', (e) => {
                 const selectedValue = e.target.value;
@@ -4582,6 +4665,7 @@
                 <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="coloque duzentas gramas de contra file">"Coloque 200g contrafilé"</button>
                 <button class="voice-cmd-chip bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="retirar o ultimo item">"Retirar último item"</button>
                 <button class="voice-cmd-chip bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="imprimir etiqueta">"Imprimir etiqueta"</button>
+                <button class="voice-cmd-chip bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="cadastrar produto de venda">"Cadastrar produto de venda"</button>
                 <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="criar categoria">"Criar categoria"</button>
             </div>
         </div>
