@@ -1465,6 +1465,7 @@
                 getReceitasSalvas: () => receitasSalvas,
                 showView: (viewId) => showView(viewId),
                 limparFicha: () => limparFicha(),
+                carregarFicha: (id) => carregarFicha(id),
                 adicionarItemPorVoz: (refId, qtdeLiquida) => {
                     showView('fichas');
                     const sel = document.getElementById('select-item');
@@ -1478,6 +1479,42 @@
                         return true;
                     }
                     return false;
+                },
+                removerItemPorVoz: (termo) => {
+                    if (!fichaAtual || !fichaAtual.componentes || fichaAtual.componentes.length === 0) {
+                        return { success: false, reason: 'vazio' };
+                    }
+                    const t = termo ? termo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim() : '';
+                    let matchIdx = -1;
+                    if (!t || t.includes('ultimo') || t.includes('ultima') || t.includes('recente') || t.includes('desfazer')) {
+                        matchIdx = fichaAtual.componentes.length - 1;
+                    } else {
+                        let bestScore = -1;
+                        fichaAtual.componentes.forEach((comp, idx) => {
+                            const compNorm = (comp.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                            let score = 0;
+                            if (compNorm === t) score = 1000;
+                            else if (compNorm.startsWith(t)) score = 500;
+                            else if (compNorm.includes(t)) score = 300;
+                            else {
+                                const words = t.split(' ').filter(Boolean);
+                                let matched = 0;
+                                words.forEach(w => { if (compNorm.includes(w)) matched++; });
+                                if (matched > 0) score = (matched / words.length) * 200;
+                            }
+                            if (score > bestScore && score >= 100) {
+                                bestScore = score;
+                                matchIdx = idx;
+                            }
+                        });
+                    }
+
+                    if (matchIdx !== -1) {
+                        const removido = fichaAtual.componentes.splice(matchIdx, 1)[0];
+                        renderizarFichaAtual();
+                        return { success: true, item: removido };
+                    }
+                    return { success: false, reason: 'nao_encontrado' };
                 }
             };
 
@@ -4462,10 +4499,11 @@
         <div class="border-t border-border-color pt-2">
             <div class="text-[10px] text-secondary font-semibold uppercase mb-1.5">Sugestões de comandos:</div>
             <div class="flex flex-wrap gap-1.5 text-xs">
-                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="criar categoria">"Criar categoria"</button>
-                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="fazer ficha tecnica">"Fazer ficha"</button>
-                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="banco de ingredientes">"Ingredientes"</button>
+                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="voltar ao inicio">"Voltar ao início"</button>
+                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="abrir as fichas">"Abrir as fichas"</button>
                 <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="coloque duzentas gramas de contra file">"Coloque 200g contrafilé"</button>
+                <button class="voice-cmd-chip bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="retirar o ultimo item">"Retirar último item"</button>
+                <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="criar categoria">"Criar categoria"</button>
             </div>
         </div>
     </div>

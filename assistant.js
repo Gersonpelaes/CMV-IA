@@ -11,6 +11,7 @@
     let isListening = false;
     let isMuted = false;
     let autoRestart = false;
+    let voices = [];
 
     // Elementos da interface
     let fabBtn = null;
@@ -23,6 +24,29 @@
     let dotIndicator = null;
     let muteBtn = null;
     let closeBtn = null;
+
+    // Carregar vozes disponíveis do sistema operacional / navegador
+    function loadVoices() {
+        if ('speechSynthesis' in window) {
+            voices = window.speechSynthesis.getVoices() || [];
+        }
+    }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+    }
+
+    // Desbloqueia áudio no primeiro clique do usuário (necessário no Chrome/Android/iOS)
+    function unlockAudio() {
+        if ('speechSynthesis' in window) {
+            try {
+                window.speechSynthesis.resume();
+                const unlock = new SpeechSynthesisUtterance(' ');
+                unlock.volume = 0.01;
+                window.speechSynthesis.speak(unlock);
+            } catch (e) {}
+        }
+    }
 
     // Dicionário de números falados em português
     const wordNums = {
@@ -199,18 +223,37 @@
         return bestItem ? { item: bestItem, type: bestType, score: bestScore } : null;
     }
 
-    // Síntese de voz (falar de volta)
+    // Síntese de voz com proteção contra GC e desbloqueio de áudio
     function speak(text) {
         if (!('speechSynthesis' in window) || isMuted) return;
         try {
+            window.speechSynthesis.resume();
             window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'pt-BR';
-            utterance.rate = 1.05;
-            utterance.pitch = 1.0;
-            window.speechSynthesis.speak(utterance);
+
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'pt-BR';
+                utterance.rate = 1.05;
+                utterance.pitch = 1.0;
+
+                if (voices.length === 0) loadVoices();
+                const ptVoice = voices.find(v => v.lang && (v.lang.includes('pt-BR') || v.lang.includes('pt_BR') || v.lang.startsWith('pt')));
+                if (ptVoice) {
+                    utterance.voice = ptVoice;
+                }
+
+                // Evita que o garbage collection do Chrome descarte o utterance antes de falar
+                window.cmvActiveUtterance = utterance;
+                utterance.onend = () => { window.cmvActiveUtterance = null; };
+                utterance.onerror = (e) => { 
+                    console.warn('[Assistente CMV.IA] Erro na síntese:', e);
+                    window.cmvActiveUtterance = null; 
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }, 60);
         } catch (e) {
-            console.warn('Erro na síntese de voz:', e);
+            console.warn('[Assistente CMV.IA] Falha ao falar:', e);
         }
     }
 
@@ -238,7 +281,109 @@
         const app = window.cmvApp;
 
         // ==========================================
-        // 1. COMANDOS DE NAVEGAÇÃO
+        // 1. VOLTAR / TELA INICIAL / DASHBOARD
+        // ==========================================
+        const isHomeCommand = t === 'voltar' || t === 'inicio' || t.includes('inicial') || 
+                              t.includes('dashboard') || t.includes('painel') || t.includes('home') || 
+                              t.startsWith('voltar para') || t.startsWith('voltar pro') || t.startsWith('ir para o inicio');
+
+        if (isHomeCommand) {
+            if (app) app.showView('dashboard');
+            const msg = 'Voltando para a tela inicial.';
+            showFeedback('🏠 ' + msg);
+            speak(msg);
+            return;
+        }
+
+        // ==========================================
+        // 2. ABRIR / CONSULTAR FICHAS
+        // ==========================================
+        // Caso A: Abrir uma ficha específica por nome (ex: "abrir ficha parmegiana", "abrir prato x")
+        if (t.startsWith('abrir ficha ') || t.startsWith('abrir o prato ') || t.startsWith('abrir a ficha ') || t.startsWith('ver ficha de ') || t.startsWith('ver ficha do ')) {
+            const queryFicha = t.replace(/^(abrir ficha |abrir o prato |abrir a ficha |ver ficha de |ver ficha do )\s*/i, '').trim();
+            const receitas = app ? app.getReceitasSalvas() : [];
+            let bestRec = null;
+            let bestScore = -1;
+
+            for (const r of receitas) {
+                const nameNorm = normalize(r.header?.descricaoProduto || '');
+                let score = 0;
+                if (nameNorm === queryFicha) score = 1000;
+                else if (nameNorm.includes(queryFicha)) score = 500;
+                else {
+                    const tokens = queryFicha.split(' ').filter(Boolean);
+                    let m = 0;
+                    tokens.forEach(tok => { if (nameNorm.includes(tok)) m++; });
+                    if (m > 0) score = (m / tokens.length) * 200;
+                }
+                if (score > bestScore && score >= 100) {
+                    bestScore = score;
+                    bestRec = r;
+                }
+            }
+
+            if (bestRec && app) {
+                app.carregarFicha(bestRec.id);
+                app.showView('fichas');
+                const msg = `Abrindo a ficha técnica de ${bestRec.header.descricaoProduto}!`;
+                showFeedback('📝 ' + msg);
+                speak(msg);
+                return;
+            }
+        }
+
+        // Caso B: Abrir a tela de consulta geral de fichas
+        if (t.includes('abrir as fichas') || t.includes('abrir fichas') || t.includes('consultar ficha') || 
+            t.includes('ver as fichas') || t.includes('ver fichas') || t.includes('fichas salvas') || 
+            t.includes('minhas fichas') || t.includes('lista de fichas') || t === 'fichas' || t === 'as fichas') {
+            if (app) app.showView('consultar');
+            setTimeout(() => {
+                const el = document.getElementById('search-fichas');
+                if (el) el.focus();
+            }, 300);
+            const msg = 'Abrindo consulta de fichas técnicas salvas.';
+            showFeedback('🔍 ' + msg);
+            speak(msg);
+            return;
+        }
+
+        // ==========================================
+        // 3. REMOVER / RETIRAR ITEM DA FICHA TÉCNICA
+        // ==========================================
+        // Ex: "remover contrafilé", "retirar o último item", "apagar contrafilé", "tira o queijo"
+        const isRemoveCommand = t.startsWith('remover') || t.startsWith('retirar') || 
+                                t.startsWith('apagar') || t.startsWith('excluir') || 
+                                t.startsWith('tira') || t.startsWith('tirar') || 
+                                t.startsWith('deletar') || t === 'desfazer';
+
+        if (isRemoveCommand) {
+            let itemRemover = t.replace(/^(remover|retirar|apagar|excluir|tira|tirar|deletar)\s*(o|a|os|as)?\s*/i, '').trim();
+            itemRemover = itemRemover.replace(/\b(da ficha|do prato|da receita|por favor)\b/g, '').trim();
+
+            if (app && typeof app.removerItemPorVoz === 'function') {
+                const res = app.removerItemPorVoz(itemRemover);
+                if (res.success) {
+                    const nomeRemovido = res.item ? (res.item.nome || 'o item') : 'o item';
+                    const msg = `Removido ${nomeRemovido} da ficha técnica!`;
+                    showFeedback('🗑️ ' + msg);
+                    speak(msg);
+                    return;
+                } else if (res.reason === 'vazio') {
+                    const msg = 'A ficha técnica está vazia, não há itens para retirar.';
+                    showFeedback('⚠️ ' + msg, false);
+                    speak(msg);
+                    return;
+                } else {
+                    const msg = `Não encontrei "${itemRemover}" na sua ficha atual para remover.`;
+                    showFeedback('⚠️ ' + msg, false);
+                    speak(msg);
+                    return;
+                }
+            }
+        }
+
+        // ==========================================
+        // 4. CRIAR CATEGORIA / CONFIGURAÇÕES
         // ==========================================
         if (t.includes('criar categoria') || t.includes('nova categoria') || t.includes('adicionar categoria') || t.includes('abrir categoria') || t.includes('categorias') || t.includes('configurac')) {
             if (app) app.showView('settings');
@@ -256,6 +401,9 @@
             return;
         }
 
+        // ==========================================
+        // 5. NOVA FICHA TÉCNICA
+        // ==========================================
         if (t.includes('fazer ficha') || t.includes('criar ficha') || t.includes('nova ficha') || t.includes('ficha tecnica') || t.includes('fazer receita')) {
             if (app) {
                 app.limparFicha();
@@ -271,6 +419,9 @@
             return;
         }
 
+        // ==========================================
+        // 6. DEMAIS TELAS (INGREDIENTES, ETIQUETAS, ETC.)
+        // ==========================================
         if (t.includes('ingrediente') || t.includes('estoque') || t.includes('banco de ingredientes') || t.includes('materia prima')) {
             if (app) app.showView('ingredientes');
             setTimeout(() => {
@@ -279,18 +430,6 @@
             }, 300);
             const msg = 'Abrindo banco de ingredientes.';
             showFeedback('🍅 ' + msg);
-            speak(msg);
-            return;
-        }
-
-        if (t.includes('consultar ficha') || t.includes('ver ficha') || t.includes('buscar ficha') || t.includes('minhas fichas')) {
-            if (app) app.showView('consultar');
-            setTimeout(() => {
-                const el = document.getElementById('search-fichas');
-                if (el) el.focus();
-            }, 300);
-            const msg = 'Abrindo consulta de fichas.';
-            showFeedback('🔍 ' + msg);
             speak(msg);
             return;
         }
@@ -343,14 +482,6 @@
             return;
         }
 
-        if (t.includes('dashboard') || t.includes('inicio') || t.includes('painel principal') || t.includes('home')) {
-            if (app) app.showView('dashboard');
-            const msg = 'Abrindo o painel principal.';
-            showFeedback('🏠 ' + msg);
-            speak(msg);
-            return;
-        }
-
         if (t.includes('tour') || t.includes('tutorial') || t.includes('ajuda') || t.includes('como usar')) {
             if (typeof window.startAppTour === 'function') {
                 window.startAppTour();
@@ -382,7 +513,7 @@
         }
 
         // ==========================================
-        // 2. NOME DO PRATO / RECEITA
+        // 7. DEFINIR NOME DO PRATO
         // ==========================================
         if (t.startsWith('nome do prato') || t.startsWith('nome da receita') || t.startsWith('chamar de') || t.startsWith('prato')) {
             let nomePrato = rawText.replace(/^(nome do prato|nome da receita|chamar de|prato)\s*/i, '').trim();
@@ -401,7 +532,7 @@
         }
 
         // ==========================================
-        // 3. ADIÇÃO DE INSUMOS À FICHA TÉCNICA
+        // 8. ADIÇÃO DE INSUMOS À FICHA TÉCNICA
         // ==========================================
         // Ex: "coloque duzentas gramas de contra file"
         // Ex: "adicione meio quilo de carne moida"
@@ -462,7 +593,7 @@
         }
 
         // Se não identificou nenhum comando específico
-        const fallbackMsg = `Não entendi o comando. Tente falar por exemplo: "coloque 200g de contrafilé" ou "criar categoria".`;
+        const fallbackMsg = `Não entendi o comando. Tente falar: "abrir as fichas", "voltar ao início", "remover o último item" ou "coloque 200g de contrafilé".`;
         showFeedback('❓ Comando não reconhecido', false);
         speak(fallbackMsg);
     }
@@ -538,10 +669,16 @@
 
         // Listeners de Botões
         if (fabBtn) {
-            fabBtn.addEventListener('click', toggleAssistant);
+            fabBtn.addEventListener('click', () => {
+                unlockAudio();
+                toggleAssistant();
+            });
         }
         if (headerBtn) {
-            headerBtn.addEventListener('click', toggleAssistant);
+            headerBtn.addEventListener('click', () => {
+                unlockAudio();
+                toggleAssistant();
+            });
         }
         if (closeBtn) {
             closeBtn.addEventListener('click', stopAssistant);
@@ -551,12 +688,14 @@
                 isMuted = !isMuted;
                 muteBtn.textContent = isMuted ? '🔇' : '🔊';
                 muteBtn.title = isMuted ? 'Voz desativada (Clique para ativar)' : 'Voz ativada (Clique para silenciar)';
+                if (!isMuted) speak('Voz ativada!');
             });
         }
 
         // Sugestões clicáveis
         document.querySelectorAll('.voice-cmd-chip').forEach(chip => {
             chip.addEventListener('click', () => {
+                unlockAudio();
                 const cmd = chip.dataset.cmd || chip.textContent.replace(/"/g, '');
                 processVoiceCommand(cmd);
             });
@@ -594,6 +733,7 @@
 
     function startAssistant() {
         if (!recognition) return;
+        unlockAudio();
         autoRestart = true;
         isListening = true;
         if (cardModal) cardModal.classList.remove('hidden');
@@ -603,6 +743,7 @@
             console.log('Reconhecimento já estava ativo');
         }
         updateUIState();
+        speak('Assistente pronto! Como posso ajudar?');
     }
 
     function stopAssistant() {
@@ -628,7 +769,8 @@
         start: startAssistant,
         stop: stopAssistant,
         toggle: toggleAssistant,
-        process: processVoiceCommand
+        process: processVoiceCommand,
+        speak: speak
     };
 
     if (document.readyState === 'loading') {
