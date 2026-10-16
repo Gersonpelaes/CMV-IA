@@ -14,7 +14,7 @@
 
     // Estado conversacional para diálogos multi-etapas
     let conversationState = {
-        step: null, // 'AWAITING_ING_NAME_FOR_PRICE', 'AWAITING_NEW_PRICE', 'AWAITING_SAVE_TYPE', 'AWAITING_EXIT_CONFIRMATION', 'AWAITING_PRATO_NAME_FOR_SAVE'
+        step: null, // 'AWAITING_ING_NAME_FOR_PRICE', 'AWAITING_NEW_PRICE', 'AWAITING_SAVE_TYPE', 'AWAITING_EXIT_CONFIRMATION', 'AWAITING_PRATO_NAME_FOR_SAVE', 'AWAITING_ING_SAVE_CHOICE'
         data: {}
     };
 
@@ -366,7 +366,7 @@
         }
 
         // ------------------------------------------------------------
-        // DIÁLOGO ATIVO: 3. AGUARDANDO TIPO DE SALVAMENTO (PRATO OU BASE)
+        // DIÁLOGO ATIVO: 3. AGUARDANDO TIPO DE SALVAMENTO DE FICHA (PRATO OU BASE)
         // ------------------------------------------------------------
         if (conversationState.step === 'AWAITING_SAVE_TYPE') {
             let tipoSalvar = null;
@@ -405,12 +405,43 @@
         }
 
         // ------------------------------------------------------------
-        // DIÁLOGO ATIVO: 4. AGUARDANDO CONFIRMAÇÃO PARA SAIR DE FICHA
+        // DIÁLOGO ATIVO: 4. AGUARDANDO ESCOLHA DE SALVAMENTO DUPLO EM INGREDIENTES
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_ING_SAVE_CHOICE') {
+            if (t.includes('preco') || t.includes('lote') || t.includes('tabela')) {
+                const btn = document.getElementById('btn-salvar-novos-precos');
+                if (btn) btn.click();
+                conversationState = { step: null, data: {} };
+                const msg = 'Atualização de preços em lote salva com sucesso!';
+                showFeedback('💰 ' + msg);
+                speak(msg);
+                return;
+            } else if (t.includes('ingrediente') || t.includes('novo')) {
+                const form = document.getElementById('form-ingrediente');
+                if (form) {
+                    window.salvandoPorVoz = true;
+                    form.requestSubmit();
+                    setTimeout(() => { window.salvandoPorVoz = false; }, 500);
+                }
+                conversationState = { step: null, data: {} };
+                const msg = 'Novo ingrediente salvo com sucesso!';
+                showFeedback('🍅 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                const msg = 'Deseja salvar a atualização de "preços em lote" ou o "novo ingrediente"?';
+                showFeedback('❓ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 5. AGUARDANDO CONFIRMAÇÃO PARA SAIR DE FICHA
         // ------------------------------------------------------------
         if (conversationState.step === 'AWAITING_EXIT_CONFIRMATION') {
             if (t.includes('sim') || t.includes('salvar') || t.includes('quero') || t === 's') {
                 const ficha = app ? app.getFichaAtual() : null;
-                // Se já tinha classificação prévia (prato ou base), mantém e salva direto!
                 if (ficha && (ficha.type === 'prato' || ficha.type === 'base')) {
                     await app.salvarFichaPorVoz(ficha.type);
                     app.showView('dashboard');
@@ -420,7 +451,6 @@
                     speak(msg);
                     return;
                 } else {
-                    // Ficha nova sem classificação
                     conversationState = { step: 'AWAITING_SAVE_TYPE', data: { thenExit: true, destination: 'dashboard' } };
                     const msg = 'Deseja salvar como prato final ou como receita base?';
                     showFeedback('❓ ' + msg);
@@ -446,7 +476,7 @@
         }
 
         // ------------------------------------------------------------
-        // DIÁLOGO ATIVO: 5. AGUARDANDO NOME DO PRATO ANTES DE SALVAR
+        // DIÁLOGO ATIVO: 6. AGUARDANDO NOME DO PRATO ANTES DE SALVAR
         // ------------------------------------------------------------
         if (conversationState.step === 'AWAITING_PRATO_NAME_FOR_SAVE') {
             const descInput = document.getElementById('descricao-produto');
@@ -472,19 +502,155 @@
         }
 
         // ============================================================
-        // COMANDOS DIRETOS (SEM DIÁLOGO PENDENTE)
+        // COMANDOS DIRETOS: 1. SALVAR (TOTALMENTE CONTEXTUAL)
         // ============================================================
+        const isSaveCommand = t === 'salvar' || t === 'salvar alteracoes' || t === 'salvar dados' || 
+                              t === 'gravar' || t.startsWith('salvar ') || t === 'salvar tudo';
 
-        // ------------------------------------------------------------
-        // 1. ATUALIZAR PREÇO DE INGREDIENTE
-        // ------------------------------------------------------------
+        if (isSaveCommand) {
+            const editModal = document.getElementById('edit-ingredient-modal');
+            const isEditModalOpen = editModal && (!editModal.classList.contains('hidden') && editModal.style.display !== 'none');
+
+            // CONTEXTO 1: Modal de edição de ingrediente aberto (em qualquer tela)
+            if (isEditModalOpen) {
+                const formEdit = document.getElementById('form-edit-ingrediente');
+                if (formEdit) {
+                    window.salvandoPorVoz = true;
+                    formEdit.requestSubmit();
+                    setTimeout(() => { window.salvandoPorVoz = false; }, 500);
+                    const msg = 'Alterações do ingrediente salvas com sucesso!';
+                    showFeedback('💾 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // CONTEXTO 2: Tela de Ingredientes
+            if (currentView === 'ingredientes') {
+                const painelPrecos = document.getElementById('painel-atualizar-precos');
+                const isPainelPrecosOpen = painelPrecos && (!painelPrecos.classList.contains('hidden') && painelPrecos.style.display !== 'none');
+                const nomeIng = document.getElementById('nome-ingrediente')?.value.trim() || '';
+                const precoIng = document.getElementById('preco-compra')?.value.trim() || '';
+                const isNovoIngFilled = nomeIng.length > 0 || precoIng.length > 0;
+
+                // Se duas opções estiverem ativas, pergunta qual deseja salvar!
+                if (isPainelPrecosOpen && isNovoIngFilled) {
+                    conversationState = { step: 'AWAITING_ING_SAVE_CHOICE', data: {} };
+                    const msg = 'Deseja salvar a atualização de preços em lote ou o novo ingrediente?';
+                    showFeedback('❓ ' + msg);
+                    speak(msg);
+                    return;
+                }
+
+                if (isPainelPrecosOpen) {
+                    const btn = document.getElementById('btn-salvar-novos-precos');
+                    if (btn) btn.click();
+                    const msg = 'Atualização de preços salva com sucesso!';
+                    showFeedback('💰 ' + msg);
+                    speak(msg);
+                    return;
+                }
+
+                if (isNovoIngFilled) {
+                    const formNovo = document.getElementById('form-ingrediente');
+                    if (formNovo) {
+                        window.salvandoPorVoz = true;
+                        formNovo.requestSubmit();
+                        setTimeout(() => { window.salvandoPorVoz = false; }, 500);
+                        const msg = 'Novo ingrediente salvo com sucesso!';
+                        showFeedback('🍅 ' + msg);
+                        speak(msg);
+                        return;
+                    }
+                }
+
+                const msg = 'Não há alterações ou ingredientes pendentes para salvar nesta tela.';
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+
+            // CONTEXTO 3: Tela de Ficha Técnica
+            if (currentView === 'fichas' || t.includes('ficha') || t.includes('receita') || t.includes('prato')) {
+                const descInput = document.getElementById('descricao-produto');
+                if (!descInput || !descInput.value.trim()) {
+                    conversationState = { step: 'AWAITING_PRATO_NAME_FOR_SAVE', data: {} };
+                    const msg = 'Qual o nome da ficha antes de salvar?';
+                    showFeedback('❓ ' + msg);
+                    speak(msg);
+                    return;
+                }
+
+                const ficha = app ? app.getFichaAtual() : null;
+                if (ficha && (ficha.type === 'prato' || ficha.type === 'base')) {
+                    const success = await app.salvarFichaPorVoz(ficha.type);
+                    if (success) {
+                        const tipoDesc = ficha.type === 'prato' ? 'prato final' : 'receita base';
+                        const msg = `Ficha técnica salva como ${tipoDesc} com sucesso!`;
+                        showFeedback('💾 ' + msg);
+                        speak(msg);
+                        return;
+                    }
+                } else {
+                    conversationState = { step: 'AWAITING_SAVE_TYPE', data: {} };
+                    const msg = 'Deseja salvar como prato final ou como receita base?';
+                    showFeedback('❓ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // CONTEXTO 4: Produtos de Venda Direta
+            if (currentView === 'venda-direta') {
+                const formVenda = document.getElementById('form-produto-venda');
+                if (formVenda) {
+                    formVenda.requestSubmit();
+                    const msg = 'Produto de venda direta salvo com sucesso!';
+                    showFeedback('🛒 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // CONTEXTO 5: Tabela de Preços de Venda
+            if (currentView === 'precos') {
+                const btnPrecos = document.getElementById('btn-salvar-lista-precos');
+                if (btnPrecos) {
+                    btnPrecos.click();
+                    const msg = 'Lista de preços salva com sucesso!';
+                    showFeedback('💲 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // CONTEXTO 6: Configurações
+            if (currentView === 'settings') {
+                const btnConfig = document.getElementById('btn-salvar-config');
+                if (btnConfig) btnConfig.click();
+                const msg = 'Configurações salvas com sucesso!';
+                showFeedback('⚙️ ' + msg);
+                speak(msg);
+                return;
+            }
+
+            // Outras telas sem formulário de salvamento
+            const msg = `Você está na tela de ${currentView}. Não há alterações para salvar nesta tela.`;
+            showFeedback('⚠️ ' + msg, false);
+            speak(msg);
+            return;
+        }
+
+        // ============================================================
+        // COMANDOS DIRETOS: 2. ATUALIZAR PREÇO DE INGREDIENTE
+        // ============================================================
         const isPriceCommand = t.includes('atualizar preco') || t.includes('mudar preco') || 
                                t.includes('alterar preco') || t.includes('ajustar preco') || 
                                t.includes('atualizar custo') || t.includes('mudar custo') ||
                                t.includes('alterar custo') || t === 'atualizar precos';
 
         if (isPriceCommand) {
-            // Caso direto em uma frase só: "atualizar preço do contrafilé para 52 reais"
+            // Em uma frase: "atualizar preço do contrafilé para 52 reais"
             const inlineMatch = t.match(/^(?:atualizar|mudar|alterar|ajustar)\s+(?:preco|custo)\s+(?:do|da|de)?\s*(.+?)\s+para\s+(.+)$/i);
             if (inlineMatch) {
                 const ingName = inlineMatch[1].trim();
@@ -505,7 +671,7 @@
                 }
             }
 
-            // Se o usuário falou apenas "atualizar preço do contrafilé" (sem o valor)
+            // Falou apenas o ingrediente: "atualizar preço do contrafilé"
             const cleanIng = t.replace(/^(atualizar|mudar|alterar|ajustar)\s+(preco|custo)\s*(do|da|de)?/i, '').trim();
             if (cleanIng.length > 2 && !cleanIng.includes('preco') && !cleanIng.includes('custo')) {
                 const ingredientes = app ? app.getIngredientes() : [];
@@ -522,7 +688,7 @@
                 }
             }
 
-            // Caso geral: usuário apenas pediu "atualizar preços"
+            // Pedido genérico: "atualizar preços"
             conversationState = { step: 'AWAITING_ING_NAME_FOR_PRICE', data: {} };
             const msg = 'Qual o ingrediente que você deseja atualizar o preço?';
             showFeedback('💰 ' + msg);
@@ -530,56 +696,14 @@
             return;
         }
 
-        // ------------------------------------------------------------
-        // 2. SALVAR FICHA TÉCNICA
-        // ------------------------------------------------------------
-        if (t === 'salvar' || t === 'salvar ficha' || t === 'salvar receita' || t === 'salvar prato') {
-            if (currentView !== 'fichas') {
-                const msg = 'Você precisa estar editando uma ficha técnica para salvar.';
-                showFeedback('⚠️ ' + msg, false);
-                speak(msg);
-                return;
-            }
-
-            const descInput = document.getElementById('descricao-produto');
-            if (!descInput || !descInput.value.trim()) {
-                conversationState = { step: 'AWAITING_PRATO_NAME_FOR_SAVE', data: {} };
-                const msg = 'Qual o nome da ficha antes de salvar?';
-                showFeedback('❓ ' + msg);
-                speak(msg);
-                return;
-            }
-
-            const ficha = app ? app.getFichaAtual() : null;
-            // Se já tem classificação estabelecida, mantém a classificação e salva direto
-            if (ficha && (ficha.type === 'prato' || ficha.type === 'base')) {
-                const success = await app.salvarFichaPorVoz(ficha.type);
-                if (success) {
-                    const tipoDesc = ficha.type === 'prato' ? 'prato final' : 'receita base';
-                    const msg = `Ficha técnica salva como ${tipoDesc} com sucesso!`;
-                    showFeedback('💾 ' + msg);
-                    speak(msg);
-                    return;
-                }
-            } else {
-                // Se for ficha nova, pergunta se é receita base ou prato final
-                conversationState = { step: 'AWAITING_SAVE_TYPE', data: {} };
-                const msg = 'Deseja salvar como prato final ou como receita base?';
-                showFeedback('❓ ' + msg);
-                speak(msg);
-                return;
-            }
-        }
-
-        // ------------------------------------------------------------
-        // 3. SAIR / VOLTAR / TELA INICIAL (COM DETECÇÃO DE FICHA EM EDIÇÃO)
-        // ------------------------------------------------------------
+        // ============================================================
+        // COMANDOS DIRETOS: 3. SAIR / VOLTAR (COM CONFIRMAÇÃO DE SALVAMENTO)
+        // ============================================================
         const isExitCommand = t === 'sair' || t === 'voltar' || t === 'inicio' || t.includes('inicial') || 
                               t.includes('dashboard') || t.includes('painel') || t.includes('home') || 
                               t.startsWith('voltar para') || t.startsWith('voltar pro') || t.startsWith('ir para o inicio');
 
         if (isExitCommand) {
-            // Se estiver na view de fichas e houver itens ou nome preenchido, pergunta antes de sair!
             if (currentView === 'fichas') {
                 const ficha = app ? app.getFichaAtual() : null;
                 const descVal = document.getElementById('descricao-produto')?.value.trim() || '';
@@ -601,9 +725,9 @@
             return;
         }
 
-        // ------------------------------------------------------------
-        // 4. ABRIR / CONSULTAR FICHAS
-        // ------------------------------------------------------------
+        // ============================================================
+        // COMANDOS DIRETOS: 4. ABRIR / CONSULTAR FICHAS
+        // ============================================================
         if (t.startsWith('abrir ficha ') || t.startsWith('abrir o prato ') || t.startsWith('abrir a ficha ') || t.startsWith('ver ficha de ') || t.startsWith('ver ficha do ')) {
             const queryFicha = t.replace(/^(abrir ficha |abrir o prato |abrir a ficha |ver ficha de |ver ficha do )\s*/i, '').trim();
             const receitas = app ? app.getReceitasSalvas() : [];
@@ -651,9 +775,9 @@
             return;
         }
 
-        // ------------------------------------------------------------
-        // 5. REMOVER / RETIRAR ITEM DA FICHA TÉCNICA
-        // ------------------------------------------------------------
+        // ============================================================
+        // COMANDOS DIRETOS: 5. REMOVER / RETIRAR ITEM DA FICHA
+        // ============================================================
         const isRemoveCommand = t.startsWith('remover') || t.startsWith('retirar') || 
                                 t.startsWith('apagar') || t.startsWith('excluir') || 
                                 t.startsWith('tira') || t.startsWith('tirar') || 
@@ -685,9 +809,9 @@
             }
         }
 
-        // ------------------------------------------------------------
-        // 6. NAVEGAÇÃO DE OUTRAS TELAS
-        // ------------------------------------------------------------
+        // ============================================================
+        // COMANDOS DIRETOS: 6. NAVEGAÇÃO DE OUTRAS TELAS
+        // ============================================================
         if (t.includes('criar categoria') || t.includes('nova categoria') || t.includes('adicionar categoria') || t.includes('abrir categoria') || t.includes('categorias') || t.includes('configurac')) {
             if (app) app.showView('settings');
             setTimeout(() => {
@@ -797,9 +921,9 @@
             return;
         }
 
-        // ------------------------------------------------------------
-        // 7. DEFINIR NOME DO PRATO
-        // ------------------------------------------------------------
+        // ============================================================
+        // COMANDOS DIRETOS: 7. DEFINIR NOME DO PRATO
+        // ============================================================
         if (t.startsWith('nome do prato') || t.startsWith('nome da receita') || t.startsWith('chamar de') || t.startsWith('prato')) {
             let nomePrato = rawText.replace(/^(nome do prato|nome da receita|chamar de|prato)\s*/i, '').trim();
             if (nomePrato) {
@@ -816,9 +940,9 @@
             }
         }
 
-        // ------------------------------------------------------------
-        // 8. ADIÇÃO DE INSUMOS À FICHA TÉCNICA
-        // ------------------------------------------------------------
+        // ============================================================
+        // COMANDOS DIRETOS: 8. ADIÇÃO DE INSUMOS À FICHA
+        // ============================================================
         const isAddCommand = t.includes('coloque') || t.includes('adicione') || t.includes('colocar') || 
                              t.includes('adicionar') || t.includes('bota') || t.includes('botar') || 
                              t.includes('bote') || t.includes('acrescente') || t.includes('insira') ||
@@ -873,14 +997,14 @@
             }
         }
 
-        // ------------------------------------------------------------
+        // ============================================================
         // 9. RESPOSTA CONTEXTUAL QUANDO NÃO ENTENDE (SEM REPETIR EXEMPLOS)
-        // ------------------------------------------------------------
+        // ============================================================
         let contextualHelp = 'Não entendi o comando. Pode repetir?';
         if (currentView === 'fichas') {
-            contextualHelp = 'Não entendi. Você pode adicionar um insumo, retirar um item ou pedir para salvar.';
+            contextualHelp = 'Não entendi. Você pode adicionar um insumo, retirar um item ou pedir para salvar a ficha.';
         } else if (currentView === 'ingredientes') {
-            contextualHelp = 'Não entendi. Você pode falar o nome de um ingrediente ou dizer "atualizar preço".';
+            contextualHelp = 'Não entendi. Você pode falar "salvar", "atualizar preço" ou o nome de um insumo.';
         } else if (currentView === 'consultar') {
             contextualHelp = 'Não entendi. Diga o nome de uma ficha para abrir, ou "voltar ao início".';
         }

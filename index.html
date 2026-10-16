@@ -3131,7 +3131,7 @@
 
                 try {
                     await addDoc(collection(db, getCollectionPath('ingredients')), newIngredient);
-                    alert('Ingrediente salvo com sucesso!');
+                    if (!window.salvandoPorVoz) alert('Ingrediente salvo com sucesso!');
                     form.reset();
                     form['rendimento-ingrediente'].value = '100';
                 } catch (error) {
@@ -3616,7 +3616,7 @@
                 }
                 await propagarNovosCustosParaReceitas(listaIngredientesAtualizada);
 
-                alert('Ingrediente atualizado com sucesso!');
+                if (!window.salvandoPorVoz) alert('Ingrediente atualizado com sucesso!');
                 closeEditIngredientModal();
             });
 
@@ -3906,9 +3906,9 @@
                     if (updatePromises.length > 0) {
                         await Promise.all(updatePromises);
                         await propagarNovosCustosParaReceitas(listaIngredientesAtualizada);
-                        alert('Preços e histórico de custos atualizados com sucesso!');
+                        if (!window.salvandoPorVoz) alert('Preços e histórico de custos atualizados com sucesso!');
                     } else {
-                        alert('Nenhum preço foi alterado.');
+                        if (!window.salvandoPorVoz) alert('Nenhum preço foi alterado.');
                     }
                     
                     painelAtualizarPrecos.classList.add('hidden');
