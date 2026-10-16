@@ -1,6 +1,5 @@
 // ============================================================
-// ASSISTENTE POR VOZ CMV.IA
-// Reconhecimento de fala, interpretação de comandos e síntese
+// ASSISTENTE POR VOZ CONVERSACIONAL E CONTEXTUAL CMV.IA
 // ============================================================
 
 (function() {
@@ -12,6 +11,12 @@
     let isMuted = false;
     let autoRestart = false;
     let voices = [];
+
+    // Estado conversacional para diálogos multi-etapas
+    let conversationState = {
+        step: null, // 'AWAITING_ING_NAME_FOR_PRICE', 'AWAITING_NEW_PRICE', 'AWAITING_SAVE_TYPE', 'AWAITING_EXIT_CONFIRMATION', 'AWAITING_PRATO_NAME_FOR_SAVE'
+        data: {}
+    };
 
     // Elementos da interface
     let fabBtn = null;
@@ -25,7 +30,7 @@
     let muteBtn = null;
     let closeBtn = null;
 
-    // Carregar vozes disponíveis do sistema operacional / navegador
+    // Carregar vozes do sistema
     function loadVoices() {
         if ('speechSynthesis' in window) {
             voices = window.speechSynthesis.getVoices() || [];
@@ -36,7 +41,7 @@
         loadVoices();
     }
 
-    // Desbloqueia áudio no primeiro clique do usuário (necessário no Chrome/Android/iOS)
+    // Desbloqueia áudio no primeiro clique do usuário
     function unlockAudio() {
         if ('speechSynthesis' in window) {
             try {
@@ -73,11 +78,40 @@
                   .trim();
     }
 
-    // Identificador de quantidades e unidades faladas
+    // Parser de preço falado (ex: "52 reais", "52", "48 e 50", "cinquenta e dois reais")
+    function parsePriceNumber(text) {
+        let t = normalize(text);
+        t = t.replace(/\b(reais|real|r\$|custo|preco|valor|de|para|por)\b/g, '').trim();
+
+        // Caso "48 e 50" -> 48.50
+        const andMatch = t.match(/^(\d+)\s+e\s+(\d+)$/);
+        if (andMatch) {
+            return parseFloat(andMatch[1] + '.' + andMatch[2]);
+        }
+        // Caso dígitos diretos "52", "52.00", "52,50"
+        const digitMatch = t.match(/(\d+(?:[.,]\d+)?)/);
+        if (digitMatch) {
+            return parseFloat(digitMatch[1].replace(',', '.'));
+        }
+
+        // Caso números por extenso
+        const tokens = t.split(/\s+/);
+        let total = 0;
+        let found = false;
+        for (const tok of tokens) {
+            if (wordNums[tok] !== undefined) {
+                found = true;
+                total += wordNums[tok];
+            }
+        }
+        if (found && total > 0) return total;
+        return null;
+    }
+
+    // Identificador de quantidades e unidades faladas para receitas
     function parsePortugueseQuantity(text) {
         const t = normalize(text);
 
-        // Expressões especiais
         if (t.includes('meio quilo') || t.includes('meio kilo')) return { qty: 0.5, unit: 'kg' };
         if (t.includes('meio litro')) return { qty: 0.5, unit: 'l' };
         if (t.includes('um e meio') || t.includes('1 e meio') || t.includes('uma e meia')) return { qty: 1.5, unit: detectUnit(t) };
@@ -85,7 +119,6 @@
 
         let detectedUnit = detectUnit(t);
 
-        // Busca numérica direta (ex: "200g", "200 gramas", "0.5kg")
         const digitMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(kg|quilos?|kilos?|g|gramas?|ml|mililitros?|litros?|l|un|unidades?|latas?|pacotes?)?/);
         if (digitMatch) {
             const val = parseFloat(digitMatch[1].replace(',', '.'));
@@ -101,7 +134,6 @@
             return { qty: val, unit: u || 'un' };
         }
 
-        // Busca por extenso (ex: "duzentas e cinquenta gramas")
         const tokens = t.split(/\s+/);
         let total = 0;
         let foundWord = false;
@@ -132,31 +164,24 @@
         return null;
     }
 
-    // Limpa verbos e palavras de comando para sobrar apenas o nome do ingrediente
+    // Extrai nome do ingrediente para comandos de adição
     function extractIngredientQuery(text) {
         let t = normalize(text);
-        
-        // Remove verbos
         t = t.replace(/\b(coloque|colocar|adicione|adicionar|bota|botar|bote|inclua|incluir|acrescente|acrescentar|insira|inserir|por|bote|adiciona)\b/g, '');
-        // Remove preposições e complementos
         t = t.replace(/\b(na ficha|a ficha|no prato|na receita|por favor|pra mim|no estoque)\b/g, '');
-        // Remove unidades
         t = t.replace(/\b(kg|quilos?|kilos?|g|gramas?|ml|mililitros?|litros?|l|un|unidades?|latas?|pacotes?|colheres?|xicaras?)\b/g, '');
-        // Remove preposições isoladas
         t = t.replace(/\b(de|do|da|dos|das|com|em|para|pra)\b/g, '');
-        // Remove números por extenso
         const numKeys = Object.keys(wordNums).concat(['meio', 'meia']);
         for (const w of numKeys) {
             t = t.replace(new RegExp('\\b' + w + '\\b', 'g'), '');
         }
-        // Remove dígitos e unidades coladas
         t = t.replace(/\b\d+(?:[.,]\d+)?\s*(?:kg|kilos?|quilos?|g|gramas?|ml|litros?|l|un|unidades?)?\b/gi, '');
         t = t.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
         return t;
     }
 
-    // Busca o melhor ingrediente ou receita base correspondente
-    function findBestItemMatch(query, ingredientes, receitasSalvas) {
+    // Busca o melhor ingrediente ou receita base
+    function findBestItemMatch(query, ingredientes, receitasSalvas = []) {
         const q = normalize(query);
         if (!q) return null;
         const qTokens = q.split(' ').filter(Boolean);
@@ -165,7 +190,6 @@
         let bestType = null;
         let bestScore = -1;
 
-        // 1. Busca em Ingredientes
         if (Array.isArray(ingredientes)) {
             for (const ing of ingredientes) {
                 const nameNorm = normalize(ing.nome);
@@ -192,7 +216,6 @@
             }
         }
 
-        // 2. Busca em Receitas Base (se houver)
         if (Array.isArray(receitasSalvas)) {
             for (const rec of receitasSalvas) {
                 if (rec.type !== 'base') continue;
@@ -223,7 +246,7 @@
         return bestItem ? { item: bestItem, type: bestType, score: bestScore } : null;
     }
 
-    // Síntese de voz com proteção contra GC e desbloqueio de áudio
+    // Síntese de voz com proteção contra GC e desbloqueio
     function speak(text) {
         if (!('speechSynthesis' in window) || isMuted) return;
         try {
@@ -242,7 +265,6 @@
                     utterance.voice = ptVoice;
                 }
 
-                // Evita que o garbage collection do Chrome descarte o utterance antes de falar
                 window.cmvActiveUtterance = utterance;
                 utterance.onend = () => { window.cmvActiveUtterance = null; };
                 utterance.onerror = (e) => { 
@@ -266,8 +288,10 @@
         actionBadge.classList.remove('hidden');
     }
 
-    // Processador central dos comandos falados
-    function processVoiceCommand(transcript) {
+    // ============================================================
+    // PROCESSADOR CENTRAL COM CONTEXTO E DIÁLOGO INTELIGENTE
+    // ============================================================
+    async function processVoiceCommand(transcript) {
         const rawText = transcript.trim();
         const t = normalize(rawText);
         if (!t) return;
@@ -276,18 +300,300 @@
             transcriptText.textContent = `"${rawText}"`;
         }
 
-        console.log('[Assistente CMV.IA] Comando ouvido:', rawText);
+        console.log('[Assistente CMV.IA] Ouvido:', rawText, '| Estado Conversacional:', conversationState.step);
 
         const app = window.cmvApp;
+        const currentView = app && typeof app.getCurrentView === 'function' ? app.getCurrentView() : 'dashboard';
 
-        // ==========================================
-        // 1. VOLTAR / TELA INICIAL / DASHBOARD
-        // ==========================================
-        const isHomeCommand = t === 'voltar' || t === 'inicio' || t.includes('inicial') || 
+        // Comandos universais de cancelamento
+        if (t === 'cancelar' || t === 'esquece' || t === 'cancela') {
+            conversationState = { step: null, data: {} };
+            const msg = 'Operação cancelada.';
+            showFeedback('❌ ' + msg, false);
+            speak(msg);
+            return;
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 1. AGUARDANDO NOME DO INGREDIENTE PARA PREÇO
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_ING_NAME_FOR_PRICE') {
+            const ingredientes = app ? app.getIngredientes() : [];
+            const match = findBestItemMatch(t, ingredientes);
+
+            if (match && match.item) {
+                conversationState = {
+                    step: 'AWAITING_NEW_PRICE',
+                    data: { ingredient: match.item }
+                };
+                const msg = `Qual o novo preço de compra para ${match.item.nome}?`;
+                showFeedback('💰 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                const msg = `Não encontrei "${rawText}" no seu estoque. Qual o ingrediente deseja atualizar?`;
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 2. AGUARDANDO NOVO VALOR DO PREÇO
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_NEW_PRICE') {
+            const targetIng = conversationState.data.ingredient;
+            const newPrice = parsePriceNumber(rawText);
+
+            if (newPrice !== null && newPrice > 0) {
+                if (app && typeof app.atualizarPrecoIngredientePorVoz === 'function') {
+                    const success = await app.atualizarPrecoIngredientePorVoz(targetIng.id, newPrice);
+                    conversationState = { step: null, data: {} };
+                    if (success) {
+                        const priceFmt = newPrice.toFixed(2).replace('.', ',');
+                        const msg = `Preço de ${targetIng.nome} atualizado para R$ ${priceFmt} com sucesso!`;
+                        showFeedback('✅ ' + msg);
+                        speak(msg);
+                        return;
+                    }
+                }
+            } else {
+                const msg = `Não entendi o valor. Fale apenas o preço, por exemplo: "52 reais" ou "48 e 50".`;
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 3. AGUARDANDO TIPO DE SALVAMENTO (PRATO OU BASE)
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_SAVE_TYPE') {
+            let tipoSalvar = null;
+            if (t.includes('prato') || t.includes('final')) {
+                tipoSalvar = 'prato';
+            } else if (t.includes('base') || t.includes('receita base') || t.includes('sub')) {
+                tipoSalvar = 'base';
+            }
+
+            if (tipoSalvar && app && typeof app.salvarFichaPorVoz === 'function') {
+                const success = await app.salvarFichaPorVoz(tipoSalvar);
+                const isThenExit = conversationState.data.thenExit;
+                const dest = conversationState.data.destination || 'dashboard';
+                conversationState = { step: null, data: {} };
+
+                if (success) {
+                    const tipoDesc = tipoSalvar === 'prato' ? 'prato final' : 'receita base';
+                    if (isThenExit) {
+                        app.showView(dest);
+                        const msg = `Ficha técnica salva como ${tipoDesc}! Voltando para a tela inicial.`;
+                        showFeedback('💾 ' + msg);
+                        speak(msg);
+                    } else {
+                        const msg = `Ficha técnica salva como ${tipoDesc} com sucesso!`;
+                        showFeedback('💾 ' + msg);
+                        speak(msg);
+                    }
+                    return;
+                }
+            } else {
+                const msg = `Por favor, responda se deseja salvar como "prato final" ou como "receita base".`;
+                showFeedback('❓ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 4. AGUARDANDO CONFIRMAÇÃO PARA SAIR DE FICHA
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_EXIT_CONFIRMATION') {
+            if (t.includes('sim') || t.includes('salvar') || t.includes('quero') || t === 's') {
+                const ficha = app ? app.getFichaAtual() : null;
+                // Se já tinha classificação prévia (prato ou base), mantém e salva direto!
+                if (ficha && (ficha.type === 'prato' || ficha.type === 'base')) {
+                    await app.salvarFichaPorVoz(ficha.type);
+                    app.showView('dashboard');
+                    conversationState = { step: null, data: {} };
+                    const msg = 'Alterações salvas! Voltando para a tela inicial.';
+                    showFeedback('💾 ' + msg);
+                    speak(msg);
+                    return;
+                } else {
+                    // Ficha nova sem classificação
+                    conversationState = { step: 'AWAITING_SAVE_TYPE', data: { thenExit: true, destination: 'dashboard' } };
+                    const msg = 'Deseja salvar como prato final ou como receita base?';
+                    showFeedback('❓ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            } else if (t.includes('nao') || t.includes('sair sem salvar') || t.includes('descarta') || t === 'n') {
+                if (app) {
+                    app.limparFicha();
+                    app.showView('dashboard');
+                }
+                conversationState = { step: null, data: {} };
+                const msg = 'Voltando para a tela inicial sem salvar.';
+                showFeedback('🏠 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                const msg = 'Deseja salvar a ficha antes de sair? Responda sim ou não.';
+                showFeedback('❓ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: 5. AGUARDANDO NOME DO PRATO ANTES DE SALVAR
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_PRATO_NAME_FOR_SAVE') {
+            const descInput = document.getElementById('descricao-produto');
+            if (descInput) {
+                descInput.value = rawText.toUpperCase();
+                descInput.dispatchEvent(new Event('input'));
+            }
+            const ficha = app ? app.getFichaAtual() : null;
+            if (ficha && (ficha.type === 'prato' || ficha.type === 'base')) {
+                await app.salvarFichaPorVoz(ficha.type);
+                conversationState = { step: null, data: {} };
+                const msg = `Ficha de ${rawText} salva com sucesso!`;
+                showFeedback('💾 ' + msg);
+                speak(msg);
+                return;
+            } else {
+                conversationState = { step: 'AWAITING_SAVE_TYPE', data: conversationState.data };
+                const msg = `Nome definido como ${rawText}. Deseja salvar como prato final ou como receita base?`;
+                showFeedback('❓ ' + msg);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ============================================================
+        // COMANDOS DIRETOS (SEM DIÁLOGO PENDENTE)
+        // ============================================================
+
+        // ------------------------------------------------------------
+        // 1. ATUALIZAR PREÇO DE INGREDIENTE
+        // ------------------------------------------------------------
+        const isPriceCommand = t.includes('atualizar preco') || t.includes('mudar preco') || 
+                               t.includes('alterar preco') || t.includes('ajustar preco') || 
+                               t.includes('atualizar custo') || t.includes('mudar custo') ||
+                               t.includes('alterar custo') || t === 'atualizar precos';
+
+        if (isPriceCommand) {
+            // Caso direto em uma frase só: "atualizar preço do contrafilé para 52 reais"
+            const inlineMatch = t.match(/^(?:atualizar|mudar|alterar|ajustar)\s+(?:preco|custo)\s+(?:do|da|de)?\s*(.+?)\s+para\s+(.+)$/i);
+            if (inlineMatch) {
+                const ingName = inlineMatch[1].trim();
+                const pricePart = inlineMatch[2].trim();
+                const newPrice = parsePriceNumber(pricePart);
+                const ingredientes = app ? app.getIngredientes() : [];
+                const match = findBestItemMatch(ingName, ingredientes);
+
+                if (match && newPrice !== null && newPrice > 0) {
+                    const success = await app.atualizarPrecoIngredientePorVoz(match.item.id, newPrice);
+                    if (success) {
+                        const priceFmt = newPrice.toFixed(2).replace('.', ',');
+                        const msg = `Preço de ${match.item.nome} atualizado para R$ ${priceFmt}!`;
+                        showFeedback('💰 ' + msg);
+                        speak(msg);
+                        return;
+                    }
+                }
+            }
+
+            // Se o usuário falou apenas "atualizar preço do contrafilé" (sem o valor)
+            const cleanIng = t.replace(/^(atualizar|mudar|alterar|ajustar)\s+(preco|custo)\s*(do|da|de)?/i, '').trim();
+            if (cleanIng.length > 2 && !cleanIng.includes('preco') && !cleanIng.includes('custo')) {
+                const ingredientes = app ? app.getIngredientes() : [];
+                const match = findBestItemMatch(cleanIng, ingredientes);
+                if (match) {
+                    conversationState = {
+                        step: 'AWAITING_NEW_PRICE',
+                        data: { ingredient: match.item }
+                    };
+                    const msg = `Qual o novo preço de compra para ${match.item.nome}?`;
+                    showFeedback('💰 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // Caso geral: usuário apenas pediu "atualizar preços"
+            conversationState = { step: 'AWAITING_ING_NAME_FOR_PRICE', data: {} };
+            const msg = 'Qual o ingrediente que você deseja atualizar o preço?';
+            showFeedback('💰 ' + msg);
+            speak(msg);
+            return;
+        }
+
+        // ------------------------------------------------------------
+        // 2. SALVAR FICHA TÉCNICA
+        // ------------------------------------------------------------
+        if (t === 'salvar' || t === 'salvar ficha' || t === 'salvar receita' || t === 'salvar prato') {
+            if (currentView !== 'fichas') {
+                const msg = 'Você precisa estar editando uma ficha técnica para salvar.';
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
+
+            const descInput = document.getElementById('descricao-produto');
+            if (!descInput || !descInput.value.trim()) {
+                conversationState = { step: 'AWAITING_PRATO_NAME_FOR_SAVE', data: {} };
+                const msg = 'Qual o nome da ficha antes de salvar?';
+                showFeedback('❓ ' + msg);
+                speak(msg);
+                return;
+            }
+
+            const ficha = app ? app.getFichaAtual() : null;
+            // Se já tem classificação estabelecida, mantém a classificação e salva direto
+            if (ficha && (ficha.type === 'prato' || ficha.type === 'base')) {
+                const success = await app.salvarFichaPorVoz(ficha.type);
+                if (success) {
+                    const tipoDesc = ficha.type === 'prato' ? 'prato final' : 'receita base';
+                    const msg = `Ficha técnica salva como ${tipoDesc} com sucesso!`;
+                    showFeedback('💾 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            } else {
+                // Se for ficha nova, pergunta se é receita base ou prato final
+                conversationState = { step: 'AWAITING_SAVE_TYPE', data: {} };
+                const msg = 'Deseja salvar como prato final ou como receita base?';
+                showFeedback('❓ ' + msg);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // 3. SAIR / VOLTAR / TELA INICIAL (COM DETECÇÃO DE FICHA EM EDIÇÃO)
+        // ------------------------------------------------------------
+        const isExitCommand = t === 'sair' || t === 'voltar' || t === 'inicio' || t.includes('inicial') || 
                               t.includes('dashboard') || t.includes('painel') || t.includes('home') || 
                               t.startsWith('voltar para') || t.startsWith('voltar pro') || t.startsWith('ir para o inicio');
 
-        if (isHomeCommand) {
+        if (isExitCommand) {
+            // Se estiver na view de fichas e houver itens ou nome preenchido, pergunta antes de sair!
+            if (currentView === 'fichas') {
+                const ficha = app ? app.getFichaAtual() : null;
+                const descVal = document.getElementById('descricao-produto')?.value.trim() || '';
+                const hasEdits = ficha && ((ficha.componentes && ficha.componentes.length > 0) || descVal.length > 0);
+
+                if (hasEdits) {
+                    conversationState = { step: 'AWAITING_EXIT_CONFIRMATION', data: { destination: 'dashboard' } };
+                    const msg = 'Deseja salvar a ficha antes de sair?';
+                    showFeedback('❓ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
             if (app) app.showView('dashboard');
             const msg = 'Voltando para a tela inicial.';
             showFeedback('🏠 ' + msg);
@@ -295,10 +601,9 @@
             return;
         }
 
-        // ==========================================
-        // 2. ABRIR / CONSULTAR FICHAS
-        // ==========================================
-        // Caso A: Abrir uma ficha específica por nome (ex: "abrir ficha parmegiana", "abrir prato x")
+        // ------------------------------------------------------------
+        // 4. ABRIR / CONSULTAR FICHAS
+        // ------------------------------------------------------------
         if (t.startsWith('abrir ficha ') || t.startsWith('abrir o prato ') || t.startsWith('abrir a ficha ') || t.startsWith('ver ficha de ') || t.startsWith('ver ficha do ')) {
             const queryFicha = t.replace(/^(abrir ficha |abrir o prato |abrir a ficha |ver ficha de |ver ficha do )\s*/i, '').trim();
             const receitas = app ? app.getReceitasSalvas() : [];
@@ -332,7 +637,6 @@
             }
         }
 
-        // Caso B: Abrir a tela de consulta geral de fichas
         if (t.includes('abrir as fichas') || t.includes('abrir fichas') || t.includes('consultar ficha') || 
             t.includes('ver as fichas') || t.includes('ver fichas') || t.includes('fichas salvas') || 
             t.includes('minhas fichas') || t.includes('lista de fichas') || t === 'fichas' || t === 'as fichas') {
@@ -347,10 +651,9 @@
             return;
         }
 
-        // ==========================================
-        // 3. REMOVER / RETIRAR ITEM DA FICHA TÉCNICA
-        // ==========================================
-        // Ex: "remover contrafilé", "retirar o último item", "apagar contrafilé", "tira o queijo"
+        // ------------------------------------------------------------
+        // 5. REMOVER / RETIRAR ITEM DA FICHA TÉCNICA
+        // ------------------------------------------------------------
         const isRemoveCommand = t.startsWith('remover') || t.startsWith('retirar') || 
                                 t.startsWith('apagar') || t.startsWith('excluir') || 
                                 t.startsWith('tira') || t.startsWith('tirar') || 
@@ -382,9 +685,9 @@
             }
         }
 
-        // ==========================================
-        // 4. CRIAR CATEGORIA / CONFIGURAÇÕES
-        // ==========================================
+        // ------------------------------------------------------------
+        // 6. NAVEGAÇÃO DE OUTRAS TELAS
+        // ------------------------------------------------------------
         if (t.includes('criar categoria') || t.includes('nova categoria') || t.includes('adicionar categoria') || t.includes('abrir categoria') || t.includes('categorias') || t.includes('configurac')) {
             if (app) app.showView('settings');
             setTimeout(() => {
@@ -401,9 +704,6 @@
             return;
         }
 
-        // ==========================================
-        // 5. NOVA FICHA TÉCNICA
-        // ==========================================
         if (t.includes('fazer ficha') || t.includes('criar ficha') || t.includes('nova ficha') || t.includes('ficha tecnica') || t.includes('fazer receita')) {
             if (app) {
                 app.limparFicha();
@@ -419,9 +719,6 @@
             return;
         }
 
-        // ==========================================
-        // 6. DEMAIS TELAS (INGREDIENTES, ETIQUETAS, ETC.)
-        // ==========================================
         if (t.includes('ingrediente') || t.includes('estoque') || t.includes('banco de ingredientes') || t.includes('materia prima')) {
             if (app) app.showView('ingredientes');
             setTimeout(() => {
@@ -492,18 +789,6 @@
             }
         }
 
-        if (t.includes('salvar prato') || t.includes('salvar ficha') || t.includes('salvar receita')) {
-            const btnPrato = document.getElementById('btn-salvar-prato');
-            const btnReceita = document.getElementById('btn-salvar-receita');
-            if (btnPrato && !btnPrato.disabled) {
-                btnPrato.click();
-                const msg = 'Salvando a ficha técnica.';
-                showFeedback('💾 ' + msg);
-                speak(msg);
-                return;
-            }
-        }
-
         if (t.includes('limpar ficha') || t.includes('apagar ficha') || t.includes('nova ficha em branco')) {
             if (app) app.limparFicha();
             const msg = 'Ficha técnica limpa com sucesso.';
@@ -512,9 +797,9 @@
             return;
         }
 
-        // ==========================================
+        // ------------------------------------------------------------
         // 7. DEFINIR NOME DO PRATO
-        // ==========================================
+        // ------------------------------------------------------------
         if (t.startsWith('nome do prato') || t.startsWith('nome da receita') || t.startsWith('chamar de') || t.startsWith('prato')) {
             let nomePrato = rawText.replace(/^(nome do prato|nome da receita|chamar de|prato)\s*/i, '').trim();
             if (nomePrato) {
@@ -531,12 +816,9 @@
             }
         }
 
-        // ==========================================
+        // ------------------------------------------------------------
         // 8. ADIÇÃO DE INSUMOS À FICHA TÉCNICA
-        // ==========================================
-        // Ex: "coloque duzentas gramas de contra file"
-        // Ex: "adicione meio quilo de carne moida"
-        // Ex: "coloque 300 ml de leite"
+        // ------------------------------------------------------------
         const isAddCommand = t.includes('coloque') || t.includes('adicione') || t.includes('colocar') || 
                              t.includes('adicionar') || t.includes('bota') || t.includes('botar') || 
                              t.includes('bote') || t.includes('acrescente') || t.includes('insira') ||
@@ -554,10 +836,9 @@
 
                 if (match) {
                     const item = match.item;
-                    const itemType = match.type; // 'ing' ou 'rec'
+                    const itemType = match.type;
                     const refId = `${itemType}_${item.id}`;
 
-                    // Conversão de unidades
                     let baseUnit = itemType === 'ing' ? (item.unidadeBase || 'un').toLowerCase() : 'kg';
                     let convertedQty = parsedQty.qty;
 
@@ -592,10 +873,19 @@
             }
         }
 
-        // Se não identificou nenhum comando específico
-        const fallbackMsg = `Não entendi o comando. Tente falar: "abrir as fichas", "voltar ao início", "remover o último item" ou "coloque 200g de contrafilé".`;
-        showFeedback('❓ Comando não reconhecido', false);
-        speak(fallbackMsg);
+        // ------------------------------------------------------------
+        // 9. RESPOSTA CONTEXTUAL QUANDO NÃO ENTENDE (SEM REPETIR EXEMPLOS)
+        // ------------------------------------------------------------
+        let contextualHelp = 'Não entendi o comando. Pode repetir?';
+        if (currentView === 'fichas') {
+            contextualHelp = 'Não entendi. Você pode adicionar um insumo, retirar um item ou pedir para salvar.';
+        } else if (currentView === 'ingredientes') {
+            contextualHelp = 'Não entendi. Você pode falar o nome de um ingrediente ou dizer "atualizar preço".';
+        } else if (currentView === 'consultar') {
+            contextualHelp = 'Não entendi. Diga o nome de uma ficha para abrir, ou "voltar ao início".';
+        }
+        showFeedback('❓ ' + contextualHelp, false);
+        speak(contextualHelp);
     }
 
     // Inicialização do Assistente e Eventos
@@ -749,6 +1039,7 @@
     function stopAssistant() {
         autoRestart = false;
         isListening = false;
+        conversationState = { step: null, data: {} };
         if (recognition) {
             try { recognition.stop(); } catch(e) {}
         }

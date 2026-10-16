@@ -1461,11 +1461,42 @@
 
             // Ponte de integração para o Assistente por Voz
             window.cmvApp = {
+                getCurrentView: () => {
+                    const active = document.querySelector('.view.active');
+                    return active ? active.id.replace('-view', '') : 'dashboard';
+                },
+                getFichaAtual: () => fichaAtual,
                 getIngredientes: () => ingredientes,
                 getReceitasSalvas: () => receitasSalvas,
                 showView: (viewId) => showView(viewId),
                 limparFicha: () => limparFicha(),
                 carregarFicha: (id) => carregarFicha(id),
+                salvarFichaPorVoz: async (tipo) => {
+                    window.salvandoPorVoz = true;
+                    try {
+                        return await salvarFicha(tipo);
+                    } finally {
+                        window.salvandoPorVoz = false;
+                    }
+                },
+                atualizarPrecoIngredientePorVoz: async (ingredientId, newPrice) => {
+                    const ing = ingredientes.find(i => i.id === ingredientId);
+                    if (!ing || isNaN(newPrice) || newPrice <= 0) return false;
+                    const newCustoBase = newPrice / (ing.unidadeCompraQtd || 1);
+                    const ingRef = doc(db, getCollectionPath('ingredients'), ingredientId);
+                    await updateDoc(ingRef, {
+                        precoCompra: newPrice,
+                        custoBase: newCustoBase
+                    });
+                    const listaAtualizada = JSON.parse(JSON.stringify(ingredientes));
+                    const itemLocal = listaAtualizada.find(i => i.id === ingredientId);
+                    if (itemLocal) {
+                        itemLocal.precoCompra = newPrice;
+                        itemLocal.custoBase = newCustoBase;
+                    }
+                    await propagarNovosCustosParaReceitas(listaAtualizada);
+                    return true;
+                },
                 adicionarItemPorVoz: (refId, qtdeLiquida) => {
                     showView('fichas');
                     const sel = document.getElementById('select-item');
@@ -2675,7 +2706,10 @@
                     modoPreparo: document.getElementById('modo-preparo').value.toUpperCase(),
                     precoVenda: precoSugerido
                 };
-                if (!header.descricaoProduto || fichaAtual.componentes.length === 0) { alert("Preencha a descrição e adicione insumos antes de salvar."); return; }
+                if (!header.descricaoProduto || fichaAtual.componentes.length === 0) { 
+                    if (!window.salvandoPorVoz) alert("Preencha a descrição e adicione insumos antes de salvar."); 
+                    return false; 
+                }
                 
                 // Prevent duplicate names
                 const isDuplicate = receitasSalvas.some(r => 
@@ -2683,8 +2717,8 @@
                 );
                 
                 if (isDuplicate) {
-                    alert("Atenção: Já existe uma ficha salva com este EXATO nome. Por favor, modifique o nome para prosseguir e evitar ambiguidades.");
-                    return;
+                    if (!window.salvandoPorVoz) alert("Atenção: Já existe uma ficha salva com este EXATO nome. Por favor, modifique o nome para prosseguir e evitar ambiguidades.");
+                    return false;
                 }
                 
                 const custoTotal = fichaAtual.componentes.reduce((acc, item) => acc + item.custoTotal, 0);
@@ -2710,7 +2744,7 @@
                         }
                         await propagarNovosCustosParaReceitas(ingredientes, receitasAposSalvar);
                     }
-                    alert(`Ficha "${header.descricaoProduto}" atualizada com sucesso!`);
+                    if (!window.salvandoPorVoz) alert(`Ficha "${header.descricaoProduto}" atualizada com sucesso!`);
                 } else {
                     const docRef = await addDoc(collection(db, getCollectionPath('recipes')), novaFicha);
                     if (tipo === 'base') {
@@ -2718,7 +2752,7 @@
                         receitasAposSalvar.push({ id: docRef.id, ...novaFicha });
                         await propagarNovosCustosParaReceitas(ingredientes, receitasAposSalvar);
                     }
-                    alert(`Ficha "${header.descricaoProduto}" salva como ${tipo} com sucesso!`);
+                    if (!window.salvandoPorVoz) alert(`Ficha "${header.descricaoProduto}" salva como ${tipo} com sucesso!`);
                 }
                 
                 const returnToConsulta = window.returnToConsulta;
@@ -2726,6 +2760,7 @@
                 if (returnToConsulta) {
                     showView('consultar');
                 }
+                return true;
             }
 
             function gerarPDF(fichaId, incluirCustos) {
