@@ -1471,6 +1471,37 @@
                 showView: (viewId) => showView(viewId),
                 limparFicha: () => limparFicha(),
                 carregarFicha: (id) => carregarFicha(id),
+                abrirModalEtiquetaPorVoz: (id, conservacao, responsavel) => {
+                    if (typeof window.abrirModalEtiqueta === 'function') {
+                        window.abrirModalEtiqueta(id);
+                        if (conservacao) {
+                            const select = document.getElementById('etq-tipo-armazenamento');
+                            if (select) select.value = conservacao;
+                        }
+                        if (responsavel) {
+                            const respInput = document.getElementById('etq-responsavel');
+                            if (respInput) respInput.value = responsavel;
+                        }
+                        return true;
+                    }
+                    return false;
+                },
+                imprimirEtiquetaAtiva: () => {
+                    const form = document.getElementById('form-gerar-etiqueta');
+                    if (form) {
+                        const respInput = document.getElementById('etq-responsavel');
+                        if (respInput && !respInput.value.trim()) {
+                            respInput.value = 'CHEF';
+                        }
+                        form.requestSubmit();
+                        return true;
+                    }
+                    return false;
+                },
+                fecharModalEtiqueta: () => {
+                    const modal = document.getElementById('etiqueta-config-modal');
+                    if (modal) modal.classList.add('hidden');
+                },
                 salvarFichaPorVoz: async (tipo) => {
                     window.salvandoPorVoz = true;
                     try {
@@ -1992,30 +2023,42 @@
             if(btnCancelEtiqueta) btnCancelEtiqueta.addEventListener('click', () => etiquetaModal.classList.add('hidden'));
 
             window.abrirModalEtiqueta = function(id) {
+                let nome = '';
+                let kcal = '', carb = '', prot = '', gord = '';
                 const ficha = receitasSalvas.find(f => f.id == id);
-                if(!ficha) return;
+                if (ficha) {
+                    nome = ficha.header.descricaoProduto;
+                    let numPorcoes = (ficha.header.rendimentoReceitaKg * 1000) / (ficha.header.tamanhoPorcaoG || 100);
+                    if (!numPorcoes || numPorcoes <= 0 || isNaN(numPorcoes)) numPorcoes = 1;
+                    if (ficha.kcalTotal) {
+                        kcal = Math.round(ficha.kcalTotal / numPorcoes);
+                        carb = (ficha.carbTotal / numPorcoes).toFixed(1);
+                        prot = (ficha.protTotal / numPorcoes).toFixed(1);
+                        gord = (ficha.gordTotal / numPorcoes).toFixed(1);
+                    }
+                } else {
+                    const ing = ingredientes.find(i => i.id == id);
+                    if (ing) {
+                        nome = ing.nome;
+                        kcal = ing.kcal ? Math.round(ing.kcal) : '';
+                        carb = ing.carb ? ing.carb.toFixed(1) : '';
+                        prot = ing.prot ? ing.prot.toFixed(1) : '';
+                        gord = ing.gord ? ing.gord.toFixed(1) : '';
+                    } else {
+                        return;
+                    }
+                }
 
                 document.getElementById('etq-ficha-id').value = id;
-                document.getElementById('etq-nome-produto').value = ficha.header.descricaoProduto;
+                document.getElementById('etq-nome-produto').value = nome;
                 
                 // Limpar campos
                 document.getElementById('etq-responsavel').value = '';
                 document.getElementById('etq-alerg-outros').value = '';
-                // Preencher com a Nutrição Automática da Ficha se existir
-                let numPorcoes = (ficha.header.rendimentoReceitaKg * 1000) / ficha.header.tamanhoPorcaoG;
-                if(!numPorcoes || numPorcoes <= 0 || isNaN(numPorcoes)) numPorcoes = 1;
-
-                if(ficha.kcalTotal) {
-                    document.getElementById('etq-nutri-kcal').value = Math.round(ficha.kcalTotal / numPorcoes);
-                    document.getElementById('etq-nutri-carb').value = (ficha.carbTotal / numPorcoes).toFixed(1);
-                    document.getElementById('etq-nutri-prot').value = (ficha.protTotal / numPorcoes).toFixed(1);
-                    document.getElementById('etq-nutri-gord').value = (ficha.gordTotal / numPorcoes).toFixed(1);
-                } else {
-                    document.getElementById('etq-nutri-kcal').value = '';
-                    document.getElementById('etq-nutri-carb').value = '';
-                    document.getElementById('etq-nutri-prot').value = '';
-                    document.getElementById('etq-nutri-gord').value = '';
-                }
+                document.getElementById('etq-nutri-kcal').value = kcal;
+                document.getElementById('etq-nutri-carb').value = carb;
+                document.getElementById('etq-nutri-prot').value = prot;
+                document.getElementById('etq-nutri-gord').value = gord;
                 document.querySelectorAll('input[name="etq-alerg"]').forEach(cb => cb.checked = false);
 
                 etiquetaModal.classList.remove('hidden');
@@ -4538,6 +4581,7 @@
                 <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="abrir as fichas">"Abrir as fichas"</button>
                 <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="coloque duzentas gramas de contra file">"Coloque 200g contrafilé"</button>
                 <button class="voice-cmd-chip bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="retirar o ultimo item">"Retirar último item"</button>
+                <button class="voice-cmd-chip bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="imprimir etiqueta">"Imprimir etiqueta"</button>
                 <button class="voice-cmd-chip bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-[11px] transition-colors" data-cmd="criar categoria">"Criar categoria"</button>
             </div>
         </div>

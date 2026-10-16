@@ -180,8 +180,8 @@
         return t;
     }
 
-    // Busca o melhor ingrediente ou receita base
-    function findBestItemMatch(query, ingredientes, receitasSalvas = []) {
+    // Busca o melhor ingrediente ou receita (base ou prato pronto)
+    function findBestItemMatch(query, ingredientes, receitasSalvas = [], allowAllRecipes = false) {
         const q = normalize(query);
         if (!q) return null;
         const qTokens = q.split(' ').filter(Boolean);
@@ -218,7 +218,7 @@
 
         if (Array.isArray(receitasSalvas)) {
             for (const rec of receitasSalvas) {
-                if (rec.type !== 'base') continue;
+                if (!allowAllRecipes && rec.type !== 'base') continue;
                 const nameNorm = normalize(rec.header?.descricaoProduto || '');
                 let score = 0;
 
@@ -304,14 +304,133 @@
 
         const app = window.cmvApp;
         const currentView = app && typeof app.getCurrentView === 'function' ? app.getCurrentView() : 'dashboard';
+        const modalEtq = document.getElementById('etiqueta-config-modal');
+        const isModalEtqOpen = modalEtq && (!modalEtq.classList.contains('hidden') && modalEtq.style.display !== 'none');
 
         // Comandos universais de cancelamento
-        if (t === 'cancelar' || t === 'esquece' || t === 'cancela') {
+        if (t === 'cancelar' || t === 'esquece' || t === 'cancela' || (isModalEtqOpen && (t === 'fechar' || t === 'sair' || t.includes('fechar etiqueta')))) {
+            if (isModalEtqOpen && app && typeof app.fecharModalEtiqueta === 'function') {
+                app.fecharModalEtiqueta();
+            }
             conversationState = { step: null, data: {} };
-            const msg = 'Operação cancelada.';
+            const msg = isModalEtqOpen ? 'Etiqueta fechada.' : 'Operação cancelada.';
             showFeedback('❌ ' + msg, false);
             speak(msg);
             return;
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: MODAL DE ETIQUETA ABERTO (CONFIRMAÇÃO / AJUSTES)
+        // ------------------------------------------------------------
+        if (isModalEtqOpen || conversationState.step === 'AWAITING_ETIQUETA_CONFIRMATION') {
+            // Confirmar impressão
+            if (t === 'imprimir' || t === 'imprimir agora' || t === 'pode imprimir' || t === 'imprime' ||
+                t === 'confirmar' || t === 'confirma' || t === 'sim' || t === 'gerar' || t === 'ok' || t === 'imprimir etiqueta') {
+                if (app && typeof app.imprimirEtiquetaAtiva === 'function') {
+                    app.imprimirEtiquetaAtiva();
+                    conversationState = { step: null, data: {} };
+                    const msg = 'Imprimindo etiqueta!';
+                    showFeedback('🖨️ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // Alterar conservação / armazenamento
+            if (t.includes('congelad')) {
+                const select = document.getElementById('etq-tipo-armazenamento');
+                if (select) select.value = 'congelado';
+                const msg = 'Armazenamento alterado para congelado, validade de 90 dias. Deseja imprimir agora?';
+                showFeedback('❄️ ' + msg);
+                speak(msg);
+                return;
+            } else if (t.includes('resfriad')) {
+                const select = document.getElementById('etq-tipo-armazenamento');
+                if (select) select.value = 'resfriado';
+                const msg = 'Armazenamento alterado para resfriado, validade de 3 dias. Deseja imprimir agora?';
+                showFeedback('🧊 ' + msg);
+                speak(msg);
+                return;
+            } else if (t.includes('seco') || t.includes('ambiente')) {
+                const select = document.getElementById('etq-tipo-armazenamento');
+                if (select) select.value = 'seco';
+                const msg = 'Armazenamento alterado para seco e arejado, validade de 180 dias. Deseja imprimir agora?';
+                showFeedback('📦 ' + msg);
+                speak(msg);
+                return;
+            } else if (t.includes('descongelad')) {
+                const select = document.getElementById('etq-tipo-armazenamento');
+                if (select) select.value = 'descongelado';
+                const msg = 'Armazenamento alterado para descongelado, validade de 24 horas. Deseja imprimir agora?';
+                showFeedback('⏳ ' + msg);
+                speak(msg);
+                return;
+            }
+
+            // Alterar responsável
+            if (t.startsWith('responsavel') || t.startsWith('chefe') || t.includes('mudar responsavel') || t.includes('alterar responsavel')) {
+                let respName = rawText.replace(/^(mudar\s+responsavel\s+para|alterar\s+responsavel\s+para|responsavel\s+e|responsavel|chefe)\s*/i, '').trim();
+                if (respName) {
+                    const respInput = document.getElementById('etq-responsavel');
+                    if (respInput) respInput.value = respName.toUpperCase();
+                    const msg = `Responsável definido como ${respName.toUpperCase()}. Deseja imprimir agora?`;
+                    showFeedback('👤 ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // Fechar modal de etiqueta
+            if (t === 'fechar' || t === 'sair' || t === 'cancelar' || t === 'esquece' || t.includes('fechar')) {
+                if (app && typeof app.fecharModalEtiqueta === 'function') {
+                    app.fecharModalEtiqueta();
+                }
+                conversationState = { step: null, data: {} };
+                const msg = 'Etiqueta fechada.';
+                showFeedback('❌ ' + msg, false);
+                speak(msg);
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DIÁLOGO ATIVO: AGUARDANDO NOME DO PRODUTO PARA ETIQUETA
+        // ------------------------------------------------------------
+        if (conversationState.step === 'AWAITING_ETIQUETA_PRODUCT_NAME') {
+            let storage = conversationState.data.storageType || null;
+            let textClean = t;
+
+            if (textClean.includes('congelad')) { storage = 'congelado'; textClean = textClean.replace(/\b(congelado|congelada|congelados|congeladas)\b/g, ''); }
+            else if (textClean.includes('resfriad')) { storage = 'resfriado'; textClean = textClean.replace(/\b(resfriado|resfriada|resfriados|resfriadas)\b/g, ''); }
+            else if (textClean.includes('seco') || textClean.includes('ambiente')) { storage = 'seco'; textClean = textClean.replace(/\b(seco|seca|ambiente)\b/g, ''); }
+            else if (textClean.includes('descongelad')) { storage = 'descongelado'; textClean = textClean.replace(/\b(descongelado|descongelada)\b/g, ''); }
+
+            textClean = textClean.replace(/\b(etiqueta|etiquetas|imprimir|gerar|de|do|da|dos|das|por favor|pra mim)\b/g, '').trim();
+
+            const querySearch = textClean || t;
+            const ingredientes = app ? app.getIngredientes() : [];
+            const receitasSalvas = app ? app.getReceitasSalvas() : [];
+            const match = findBestItemMatch(querySearch, ingredientes, receitasSalvas, true);
+
+            if (match && match.item) {
+                const itemName = match.type === 'ing' ? match.item.nome : (match.item.header?.descricaoProduto || 'Receita');
+                if (app && typeof app.abrirModalEtiquetaPorVoz === 'function') {
+                    app.abrirModalEtiquetaPorVoz(match.item.id, storage || 'resfriado');
+                    conversationState = {
+                        step: 'AWAITING_ETIQUETA_CONFIRMATION',
+                        data: { itemId: match.item.id, itemName: itemName }
+                    };
+                    const msg = `Etiqueta de ${itemName} aberta. Deseja imprimir agora ou alterar o armazenamento?`;
+                    showFeedback('🏷️ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            } else {
+                const msg = `Não encontrei "${rawText}". Diga o nome de uma receita ou ingrediente cadastrado, ou diga "cancelar".`;
+                showFeedback('⚠️ ' + msg, false);
+                speak(msg);
+                return;
+            }
         }
 
         // ------------------------------------------------------------
@@ -855,9 +974,104 @@
             return;
         }
 
-        if (t.includes('etiqueta') || t.includes('gerar etiqueta') || t.includes('imprimir etiqueta')) {
-            if (app) app.showView('etiquetas');
-            const msg = 'Abrindo impressão rápida de etiquetas.';
+        // ============================================================
+        // COMANDOS DIRETOS: IMPRIMIR E GERAR ETIQUETAS
+        // ============================================================
+        const isEtiquetaCommand = t.includes('etiqueta') || t.includes('etiquetas') || 
+                                  t.startsWith('imprimir etiqueta') || t.startsWith('gerar etiqueta');
+
+        if (isEtiquetaCommand) {
+            // Se o usuário pediu explicitamente para abrir a tela/painel de etiquetas:
+            if (t === 'abrir etiquetas' || t === 'abrir tela de etiquetas' || t === 'ver etiquetas' || 
+                t === 'ir para etiquetas' || t === 'tela de etiquetas' || t === 'painel de etiquetas' ||
+                t === 'consultar etiquetas' || t === 'lista de etiquetas') {
+                if (app) app.showView('etiquetas');
+                const msg = 'Abrindo impressão rápida de etiquetas.';
+                showFeedback('🏷️ ' + msg);
+                speak(msg);
+                return;
+            }
+
+            // Identificar conservação se mencionada na frase
+            let detectedStorage = null;
+            if (t.includes('congelad')) detectedStorage = 'congelado';
+            else if (t.includes('resfriad')) detectedStorage = 'resfriado';
+            else if (t.includes('seco') || t.includes('ambiente')) detectedStorage = 'seco';
+            else if (t.includes('descongelad')) detectedStorage = 'descongelado';
+
+            // Extrair nome do produto ou receita da frase
+            let queryProd = t;
+            queryProd = queryProd.replace(/^(por favor\s+)?(imprimir|imprima|imprime|gerar|gere|fazer|faca|ver|abrir)\s+(a\s+|o\s+)?(etiqueta|etiquetas)\s*(de|do|da|dos|das)?\s*/i, '');
+            queryProd = queryProd.replace(/^(etiqueta|etiquetas)\s*(de|do|da|dos|das)?\s*/i, '');
+            queryProd = queryProd.replace(/\b(congelado|congelada|congelados|congeladas|resfriado|resfriada|resfriados|resfriadas|seco|seca|ambiente|descongelado|descongelada)\b/g, '');
+            queryProd = queryProd.replace(/\b(por favor|pra mim|agora|rapida|rapido)\b/g, '').trim();
+
+            const ingredientes = app ? app.getIngredientes() : [];
+            const receitasSalvas = app ? app.getReceitasSalvas() : [];
+
+            // CASO 1: Nome do produto/receita foi falado (ex: "imprimir etiqueta de contra filé congelado", "etiqueta do strogonoff")
+            if (queryProd.length > 1) {
+                const match = findBestItemMatch(queryProd, ingredientes, receitasSalvas, true);
+
+                if (match && match.item) {
+                    const itemName = match.type === 'ing' ? match.item.nome : (match.item.header?.descricaoProduto || 'Receita');
+                    if (app && typeof app.abrirModalEtiquetaPorVoz === 'function') {
+                        app.abrirModalEtiquetaPorVoz(match.item.id, detectedStorage || 'resfriado');
+                        conversationState = {
+                            step: 'AWAITING_ETIQUETA_CONFIRMATION',
+                            data: { itemId: match.item.id, itemName: itemName }
+                        };
+                        const msg = `Etiqueta de ${itemName} aberta. Deseja imprimir agora ou alterar o armazenamento?`;
+                        showFeedback('🏷️ ' + msg);
+                        speak(msg);
+                        return;
+                    }
+                } else {
+                    conversationState = { step: 'AWAITING_ETIQUETA_PRODUCT_NAME', data: { storageType: detectedStorage } };
+                    const msg = `Não encontrei "${queryProd}" nas suas receitas ou ingredientes. De qual produto você deseja imprimir a etiqueta?`;
+                    showFeedback('⚠️ ' + msg, false);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // CASO 2: Falou apenas "imprimir etiqueta" sem especificar o produto
+            // Se estiver na tela de fichas e houver uma ficha ativa carregada:
+            if (currentView === 'fichas') {
+                const fichaAtual = app ? app.getFichaAtual() : null;
+                const descInput = document.getElementById('descricao-produto');
+                const nomeFichaAtual = descInput ? descInput.value.trim() : '';
+
+                let targetId = null;
+                let targetName = '';
+
+                if (fichaAtual && fichaAtual.id) {
+                    targetId = fichaAtual.id;
+                    targetName = fichaAtual.header?.descricaoProduto || nomeFichaAtual;
+                } else if (nomeFichaAtual) {
+                    const m = findBestItemMatch(nomeFichaAtual, [], receitasSalvas, true);
+                    if (m && m.item) {
+                        targetId = m.item.id;
+                        targetName = m.item.header?.descricaoProduto || nomeFichaAtual;
+                    }
+                }
+
+                if (targetId && app && typeof app.abrirModalEtiquetaPorVoz === 'function') {
+                    app.abrirModalEtiquetaPorVoz(targetId, detectedStorage || 'resfriado');
+                    conversationState = {
+                        step: 'AWAITING_ETIQUETA_CONFIRMATION',
+                        data: { itemId: targetId, itemName: targetName }
+                    };
+                    const msg = `Etiqueta de ${targetName} aberta. Deseja imprimir agora?`;
+                    showFeedback('🏷️ ' + msg);
+                    speak(msg);
+                    return;
+                }
+            }
+
+            // Se não houver ficha ativa aberta ou estiver em outra tela, inicia diálogo contextual:
+            conversationState = { step: 'AWAITING_ETIQUETA_PRODUCT_NAME', data: { storageType: detectedStorage } };
+            const msg = 'De qual produto ou receita você deseja imprimir a etiqueta?';
             showFeedback('🏷️ ' + msg);
             speak(msg);
             return;
@@ -1001,8 +1215,12 @@
         // 9. RESPOSTA CONTEXTUAL QUANDO NÃO ENTENDE (SEM REPETIR EXEMPLOS)
         // ============================================================
         let contextualHelp = 'Não entendi o comando. Pode repetir?';
-        if (currentView === 'fichas') {
-            contextualHelp = 'Não entendi. Você pode adicionar um insumo, retirar um item ou pedir para salvar a ficha.';
+        if (isModalEtqOpen) {
+            contextualHelp = 'Você está na configuração da etiqueta. Diga "imprimir agora", mude para "congelado" ou diga "cancelar".';
+        } else if (currentView === 'etiquetas') {
+            contextualHelp = 'Você está na tela de etiquetas. Diga "imprimir etiqueta de [produto]" ou "voltar ao início".';
+        } else if (currentView === 'fichas') {
+            contextualHelp = 'Não entendi. Você pode adicionar um insumo, retirar um item, pedir para imprimir etiqueta ou salvar a ficha.';
         } else if (currentView === 'ingredientes') {
             contextualHelp = 'Não entendi. Você pode falar "salvar", "atualizar preço" ou o nome de um insumo.';
         } else if (currentView === 'consultar') {
