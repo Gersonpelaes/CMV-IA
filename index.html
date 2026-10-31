@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cmv IA - Dashboard de Gestão Responsivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bibliotecas para gerar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -25,7 +30,7 @@
             --form-border: #d1d5db;
         }
 
-        .dark-theme {
+        .dark, .dark-theme {
             --bg-primary: #111827;
             --bg-secondary: #1f2937;
             --bg-card: #1f2937;
@@ -34,7 +39,14 @@
             --border-color: #374151;
             --form-bg: #374151;
             --form-border: #4b5563;
-        }
+
+        .text-primary { color: var(--text-primary); }
+        .text-secondary { color: var(--text-secondary); }
+        .bg-primary { background-color: var(--bg-primary); }
+        .bg-secondary { background-color: var(--bg-secondary); }
+        .bg-card { background-color: var(--bg-card); }
+        .bg-form-bg { background-color: var(--form-bg); }
+        .border-border-color { border-color: var(--border-color); }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -191,6 +203,9 @@
         }
     </script>
     <script>
+        if (localStorage.getItem('cmv_theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
         if (localStorage.getItem('cmv_user_logged') === 'true') {
             document.documentElement.classList.add('cmv-pre-auth');
         }
@@ -826,14 +841,18 @@
                         </div>
 
                         <!-- Panel de Configuração de Metas (Escondido) -->
-                        <div id="panel-metas-margem" class="hidden bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-6 shadow-sm transition-all">
+                        <div id="panel-metas-margem" class="hidden bg-blue-50/90 dark:bg-blue-950/40 p-4 md:p-6 rounded-xl border border-blue-200 dark:border-blue-800 mb-6 shadow-sm transition-all">
                             <div class="flex justify-between items-center mb-2">
-                                <h4 class="font-semibold text-lg text-blue-800 dark:text-blue-300">Definir Margem Ideal por Categoria (%)</h4>
-                                <button type="button" onclick="document.getElementById('panel-metas-margem').classList.add('hidden')" class="text-blue-500 hover:text-blue-700 font-bold p-1">✕</button>
+                                <h4 class="font-bold text-lg text-blue-900 dark:text-blue-300 flex items-center gap-2">
+                                    <span>🎯</span> Definir Margem Ideal por Categoria (%)
+                                </h4>
+                                <button type="button" onclick="document.getElementById('panel-metas-margem').classList.add('hidden')" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 font-bold p-1 text-lg leading-none rounded hover:bg-blue-100 dark:hover:bg-blue-900/50 transition" title="Fechar">✕</button>
                             </div>
-                            <p class="text-sm text-blue-600 dark:text-blue-400 mb-4">Se a margem real ficar abaixo da meta da categoria, ela será destacada em vermelho. Deixe em branco caso a categoria não possua meta.</p>
-                            <div id="grid-metas-margem" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4"></div>
-                            <button type="button" id="btn-salvar-metas-margem" class="btn-primary text-sm bg-green-600 hover:bg-green-700 text-white">Salvar Metas de Margem</button>
+                            <p class="text-sm text-blue-800 dark:text-blue-300 mb-4 font-medium">Se a margem real ficar abaixo da meta da categoria, ela será destacada em vermelho. Deixe em branco caso a categoria não possua meta.</p>
+                            <div id="grid-metas-margem" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 mb-4"></div>
+                            <div class="flex justify-end">
+                                <button type="button" id="btn-salvar-metas-margem" class="btn-primary text-sm bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-5 rounded-lg shadow transition">Salvar Metas de Margem</button>
+                            </div>
                         </div>
 
                         <!-- Filtros Margem -->
@@ -852,9 +871,28 @@
                 <div id="precos-view" class="view">
                      <div class="card relative">
                         <div class="sticky top-0 z-20 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-border-color p-4 md:p-8 rounded-t-[0.75rem]" style="background-color: var(--bg-card);">
-                            <h3 class="text-2xl font-bold">Lista de Preços de Venda</h3>
+                            <div>
+                                <h3 class="text-2xl font-bold">Lista de Preços de Venda</h3>
+                                <p class="text-xs text-secondary mt-1">Ajuste os preços de venda de pratos e produtos com recálculo automático de margem.</p>
+                            </div>
                             <button type="button" id="btn-salvar-lista-precos" class="w-full sm:w-auto mt-4 sm:mt-0 btn-primary bg-green-600 hover:bg-green-700 shadow-md">Salvar Alterações</button>
                         </div>
+
+                        <!-- Filtros de Preço de Venda -->
+                        <div class="p-4 md:px-8 pb-0 pt-4">
+                            <div class="flex flex-col sm:flex-row gap-4 mb-2">
+                                <input type="text" id="search-precos" class="flex-grow form-input" placeholder="Pesquisar por prato ou produto...">
+                                <select id="filter-precos-categoria" class="form-select sm:w-64">
+                                    <option value="todas">Todas as Categorias</option>
+                                </select>
+                                <select id="filter-precos-tipo" class="form-select sm:w-48">
+                                    <option value="todos">Todos os Tipos</option>
+                                    <option value="prato">Apenas Pratos</option>
+                                    <option value="produto">Apenas Venda Direta</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div id="lista-precos-container" class="space-y-6 p-4 md:p-8 pt-4 md:pt-6"></div>
                     </div>
                 </div>
@@ -1505,7 +1543,13 @@
                         const fcM = document.getElementById('filter-margem-categoria')?.value || 'todas';
                         renderizarRelatorioMargem(smM, fcM);
                     }
-                    if (viewId === 'precos') renderizarListaDePrecos();
+                    if (viewId === 'precos') {
+                        if (typeof populatePrecosCategoryDropdown === 'function') populatePrecosCategoryDropdown();
+                        const searchP = document.getElementById('search-precos')?.value || '';
+                        const filterCatP = document.getElementById('filter-precos-categoria')?.value || 'todas';
+                        const filterTipoP = document.getElementById('filter-precos-tipo')?.value || 'todos';
+                        renderizarListaDePrecos(searchP, filterCatP, filterTipoP);
+                    }
                     if (viewId === 'ingredientes') populateIngredientCategoryDropdowns();
                     if (viewId === 'venda-direta') populateDirectSaleCategoryDropdown();
                     if (viewId === 'fichas') {
@@ -1736,6 +1780,18 @@
                 if(allCategories.includes(currentValue)) select.value = currentValue;
             }
 
+            function populatePrecosCategoryDropdown() {
+                const select = document.getElementById('filter-precos-categoria');
+                if(!select) return;
+                const currentValue = select.value;
+                select.innerHTML = '<option value="todas">Todas as Categorias</option>';
+                const allCategories = [...new Set([...dishCategories, ...directSaleCategories])].sort();
+                allCategories.forEach(cat => {
+                    select.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+                if(allCategories.includes(currentValue)) select.value = currentValue;
+            }
+
             function renderAllCategoryLists() {
                 renderCategoryList(ingredientCategories, listaCatIngredientes, 'blue', 'ingredient');
                 renderCategoryList(directSaleCategories, listaCatVenda, 'orange', 'directSale');
@@ -1746,6 +1802,7 @@
                 populateDishCategoryDropdown();
                 populateFichasCategoryDropdown();
                 if(typeof populateMargemCategoryDropdown === 'function') populateMargemCategoryDropdown();
+                if(typeof populatePrecosCategoryDropdown === 'function') populatePrecosCategoryDropdown();
             }
 
             async function addCategory(event, categoryArray, inputId) {
@@ -2473,14 +2530,19 @@
                 grid.innerHTML = '';
                 
                 const allCats = [...new Set([...dishCategories, ...directSaleCategories])].sort();
+                if (allCats.length === 0) {
+                    grid.innerHTML = '<p class="col-span-full text-center text-sm text-blue-800 dark:text-blue-300 py-3">Nenhuma categoria de prato ou venda direta cadastrada.</p>';
+                    return;
+                }
+
                 allCats.forEach(cat => {
                     const val = metasMargemCache[cat] || '';
                     grid.innerHTML += `
-                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-border-color">
-                            <label class="block text-xs font-medium text-secondary truncate mb-1" title="${cat}">${cat}</label>
-                            <div class="flex items-center gap-1">
-                                <input type="number" step="0.1" class="form-input meta-margem-input w-full text-sm py-1" data-cat="${cat}" value="${val}" placeholder="Ex: 50">
-                                <span class="text-secondary text-sm">%</span>
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg border border-blue-200 dark:border-gray-700 shadow-sm transition-all hover:border-blue-400 dark:hover:border-blue-500">
+                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-100 truncate mb-1.5" title="${cat}">${cat}</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" step="0.1" class="form-input meta-margem-input w-full text-sm py-1 px-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-blue-500 font-semibold" data-cat="${cat}" value="${val}" placeholder="Ex: 50">
+                                <span class="text-gray-600 dark:text-gray-300 text-sm font-bold">%</span>
                             </div>
                         </div>
                     `;
@@ -2665,16 +2727,51 @@
             }
             document.getElementById('btn-exportar-margem-pdf')?.addEventListener('click', gerarPDFMargem);
 
-            function renderizarListaDePrecos() {
+            let editedPricesCache = {};
+
+            function renderizarListaDePrecos(
+                searchTerm = document.getElementById('search-precos')?.value || '', 
+                filterCategory = document.getElementById('filter-precos-categoria')?.value || 'todas', 
+                filterTipo = document.getElementById('filter-precos-tipo')?.value || 'todos'
+            ) {
                 listaPrecosContainer.innerHTML = '';
                 const pratos = receitasSalvas.filter(r => r.type === 'prato');
                 
                 if (pratos.length === 0 && produtosVendaDireta.length === 0) {
-                    listaPrecosContainer.innerHTML = '<p class="text-secondary text-center">Nenhum item de venda para editar preços.</p>';
+                    listaPrecosContainer.innerHTML = '<p class="text-secondary text-center py-6">Nenhum item de venda para editar preços.</p>';
                     return;
                 }
 
-                const groupedPratos = pratos.reduce((acc, prato) => {
+                const searchLower = searchTerm.trim().toLowerCase();
+
+                // Filtra pratos
+                let pratosFiltrados = [];
+                if (filterTipo !== 'produto') {
+                    pratosFiltrados = pratos.filter(p => {
+                        const matchNome = (p.header.descricaoProduto || '').toLowerCase().includes(searchLower);
+                        const cat = p.header.categoria || 'SEM CATEGORIA';
+                        const matchCat = filterCategory === 'todas' || cat === filterCategory;
+                        return matchNome && matchCat;
+                    });
+                }
+
+                // Filtra produtos de venda direta
+                let produtosFiltrados = [];
+                if (filterTipo !== 'prato') {
+                    produtosFiltrados = produtosVendaDireta.filter(prod => {
+                        const matchNome = (prod.nome || '').toLowerCase().includes(searchLower);
+                        const cat = prod.category || 'SEM CATEGORIA';
+                        const matchCat = filterCategory === 'todas' || cat === filterCategory;
+                        return matchNome && matchCat;
+                    });
+                }
+
+                if (pratosFiltrados.length === 0 && produtosFiltrados.length === 0) {
+                    listaPrecosContainer.innerHTML = '<p class="text-secondary text-center py-6">Nenhum item encontrado com os filtros aplicados.</p>';
+                    return;
+                }
+
+                const groupedPratos = pratosFiltrados.reduce((acc, prato) => {
                     const cat = prato.header.categoria || 'SEM CATEGORIA';
                     const sub = prato.header.subcategoria ? ` > ${prato.header.subcategoria}` : '';
                     const groupName = cat + sub;
@@ -2683,7 +2780,7 @@
                     return acc;
                 }, {});
 
-                const groupedProdutos = produtosVendaDireta.reduce((acc, prod) => {
+                const groupedProdutos = produtosFiltrados.reduce((acc, prod) => {
                     const groupName = prod.category || 'SEM CATEGORIA';
                     if (!acc[groupName]) acc[groupName] = [];
                     acc[groupName].push(prod);
@@ -2696,41 +2793,59 @@
                 allCategories.forEach(category => {
                     const pratosDaCategoria = (groupedPratos[category] || []).sort((a,b) => a.header.descricaoProduto.localeCompare(b.header.descricaoProduto));
                     const produtosDaCategoria = (groupedProdutos[category] || []).sort((a,b) => a.nome.localeCompare(b.nome));
+                    const totalItens = pratosDaCategoria.length + produtosDaCategoria.length;
                     
                     html += `
-                        <div class="bg-form-bg p-4 rounded-lg border border-border-color" data-category="${category}">
-                            <div class="flex flex-col sm:flex-row justify-between items-center mb-3 border-b border-border-color pb-2 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                                <h3 class="text-xl font-semibold text-blue-800 dark:text-blue-400">${category}</h3>
-                                <span class="text-xs text-secondary font-normal bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">👁️ Ocultar/Exibir</span>
+                        <div class="bg-form-bg p-4 rounded-xl border border-border-color shadow-sm" data-category="${category}">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 border-b border-border-color pb-2 cursor-pointer select-none" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-xl font-bold text-blue-800 dark:text-blue-400">${category}</h3>
+                                    <span class="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-semibold px-2.5 py-0.5 rounded-full">${totalItens} ${totalItens === 1 ? 'item' : 'itens'}</span>
+                                </div>
+                                <span class="text-xs text-secondary font-normal bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 px-2.5 py-1 rounded transition mt-1 sm:mt-0">👁️ Ocultar/Exibir</span>
                             </div>
-                            <div class="space-y-2 mt-2 relative transition-all">
+                            <div class="space-y-2.5 mt-2 relative transition-all">
                     `;
 
                     pratosDaCategoria.forEach(prato => {
                         const custoPorPorcao = (prato.custoTotal / prato.header.rendimentoReceitaKg) * (prato.header.tamanhoPorcaoG / 1000) || 0;
-                        const precoVenda = prato.header.precoVenda || 0;
+                        const precoOriginal = prato.header.precoVenda || 0;
+                        const precoVenda = (editedPricesCache[prato.id] && !isNaN(editedPricesCache[prato.id].preco)) 
+                            ? editedPricesCache[prato.id].preco 
+                            : precoOriginal;
                         const margemAtual = precoVenda > 0 ? ((precoVenda - custoPorPorcao) / precoVenda) * 100 : 0;
+                        const margemOriginal = precoOriginal > 0 ? ((precoOriginal - custoPorPorcao) / precoOriginal) * 100 : 0;
 
                         html += `
-                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center text-sm prato-item" data-id="${prato.id}" data-type="prato" data-custo="${custoPorPorcao}">
-                                <span class="sm:col-span-2">${prato.header.descricaoProduto} <span class="text-xs text-green-500">(PRATO)</span></span>
-                                <span class="text-secondary">R$ ${precoVenda.toFixed(2)} (${margemAtual.toFixed(2)}%)</span>
-                                <input type="number" step="0.01" value="${precoVenda.toFixed(2)}" class="novo-preco-input form-input text-right">
-                                <span class="nova-margem-span text-right font-semibold">${margemAtual.toFixed(2)}%</span>
+                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-4 items-center text-sm p-2.5 rounded-lg hover:bg-white/70 dark:hover:bg-gray-800/70 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition prato-item" data-id="${prato.id}" data-type="prato" data-custo="${custoPorPorcao}">
+                                <span class="sm:col-span-2 font-medium">${prato.header.descricaoProduto} <span class="text-xs bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 px-1.5 py-0.5 rounded font-semibold ml-1">PRATO</span></span>
+                                <span class="text-secondary text-xs sm:text-sm">Atual: R$ ${precoOriginal.toFixed(2)} (${margemOriginal.toFixed(1)}%)</span>
+                                <div class="relative">
+                                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-secondary font-semibold">R$</span>
+                                    <input type="number" step="0.01" value="${precoVenda.toFixed(2)}" class="novo-preco-input form-input text-right pl-7 pr-2.5 font-semibold">
+                                </div>
+                                <span class="nova-margem-span text-right font-bold ${margemAtual >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">${margemAtual.toFixed(1)}%</span>
                             </div>
                         `;
                     });
                     
                     produtosDaCategoria.forEach(prod => {
-                        const precoVenda = prod.precoVenda || 0;
+                        const precoOriginal = prod.precoVenda || 0;
+                        const precoVenda = (editedPricesCache[prod.id] && !isNaN(editedPricesCache[prod.id].preco)) 
+                            ? editedPricesCache[prod.id].preco 
+                            : precoOriginal;
                         const margemAtual = precoVenda > 0 ? ((precoVenda - prod.precoCompra) / precoVenda) * 100 : 0;
+                        const margemOriginal = precoOriginal > 0 ? ((precoOriginal - prod.precoCompra) / precoOriginal) * 100 : 0;
 
                         html += `
-                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center text-sm prato-item" data-id="${prod.id}" data-type="produto" data-custo="${prod.precoCompra}">
-                                <span class="sm:col-span-2">${prod.nome} <span class="text-xs text-orange-500">(PRODUTO)</span></span>
-                                <span class="text-secondary">R$ ${precoVenda.toFixed(2)} (${margemAtual.toFixed(2)}%)</span>
-                                <input type="number" step="0.01" value="${precoVenda.toFixed(2)}" class="novo-preco-input form-input text-right">
-                                <span class="nova-margem-span text-right font-semibold">${margemAtual.toFixed(2)}%</span>
+                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 sm:gap-4 items-center text-sm p-2.5 rounded-lg hover:bg-white/70 dark:hover:bg-gray-800/70 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition prato-item" data-id="${prod.id}" data-type="produto" data-custo="${prod.precoCompra}">
+                                <span class="sm:col-span-2 font-medium">${prod.nome} <span class="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 px-1.5 py-0.5 rounded font-semibold ml-1">PRODUTO</span></span>
+                                <span class="text-secondary text-xs sm:text-sm">Atual: R$ ${precoOriginal.toFixed(2)} (${margemOriginal.toFixed(1)}%)</span>
+                                <div class="relative">
+                                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-secondary font-semibold">R$</span>
+                                    <input type="number" step="0.01" value="${precoVenda.toFixed(2)}" class="novo-preco-input form-input text-right pl-7 pr-2.5 font-semibold">
+                                </div>
+                                <span class="nova-margem-span text-right font-bold ${margemAtual >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">${margemAtual.toFixed(1)}%</span>
                             </div>
                         `;
                     });
@@ -4287,31 +4402,72 @@
             searchAnaliseInput.addEventListener('input', (e) => renderizarAnaliseDeCustos(e.target.value, filterAnaliseSelect.value));
             filterAnaliseSelect.addEventListener('change', (e) => renderizarAnaliseDeCustos(searchAnaliseInput.value, e.target.value));
 
+            // Event listeners dos filtros da Lista de Preços de Venda
+            const searchPrecosInput = document.getElementById('search-precos');
+            const filterPrecosCategoriaSelect = document.getElementById('filter-precos-categoria');
+            const filterPrecosTipoSelect = document.getElementById('filter-precos-tipo');
+
+            searchPrecosInput?.addEventListener('input', () => {
+                renderizarListaDePrecos(searchPrecosInput.value, filterPrecosCategoriaSelect.value, filterPrecosTipoSelect.value);
+            });
+            filterPrecosCategoriaSelect?.addEventListener('change', () => {
+                renderizarListaDePrecos(searchPrecosInput.value, filterPrecosCategoriaSelect.value, filterPrecosTipoSelect.value);
+            });
+            filterPrecosTipoSelect?.addEventListener('change', () => {
+                renderizarListaDePrecos(searchPrecosInput.value, filterPrecosCategoriaSelect.value, filterPrecosTipoSelect.value);
+            });
+
             btnSalvarListaPrecos.addEventListener('click', async () => {
                 const inputs = listaPrecosContainer.querySelectorAll('.novo-preco-input');
-                const updatePromises = [];
                 inputs.forEach(input => {
                     const itemDiv = input.closest('.prato-item');
+                    if (!itemDiv) return;
                     const itemId = itemDiv.dataset.id;
                     const itemType = itemDiv.dataset.type;
-                    const novoPreco = parseFloat(input.value);
-
-                    if (itemType === 'prato') {
-                        const itemRef = doc(db, getCollectionPath('recipes'), itemId);
-                        updatePromises.push(updateDoc(itemRef, { "header.precoVenda": novoPreco }));
-                    } else if (itemType === 'produto') {
-                        const itemRef = doc(db, getCollectionPath('direct_sale_products'), itemId);
-                        updatePromises.push(updateDoc(itemRef, { precoVenda: novoPreco }));
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) {
+                        editedPricesCache[itemId] = { id: itemId, type: itemType, preco: val };
                     }
                 });
-                await Promise.all(updatePromises);
-                alert('Preços de venda atualizados com sucesso!');
-                showView('dashboard');
+
+                const entriesToUpdate = Object.values(editedPricesCache);
+                if (entriesToUpdate.length === 0) {
+                    alert('Nenhuma alteração de preço para salvar.');
+                    return;
+                }
+
+                const originalBtnText = btnSalvarListaPrecos.textContent;
+                btnSalvarListaPrecos.disabled = true;
+                btnSalvarListaPrecos.textContent = 'Salvando...';
+
+                try {
+                    const updatePromises = entriesToUpdate.map(entry => {
+                        if (entry.type === 'prato') {
+                            const itemRef = doc(db, getCollectionPath('recipes'), entry.id);
+                            return updateDoc(itemRef, { "header.precoVenda": entry.preco });
+                        } else if (entry.type === 'produto') {
+                            const itemRef = doc(db, getCollectionPath('direct_sale_products'), entry.id);
+                            return updateDoc(itemRef, { precoVenda: entry.preco });
+                        }
+                    });
+                    await Promise.all(updatePromises);
+                    editedPricesCache = {};
+                    alert('Preços de venda atualizados com sucesso!');
+                    showView('precos');
+                } catch (error) {
+                    console.error('Erro ao atualizar preços:', error);
+                    alert('Erro ao salvar novos preços: ' + error.message);
+                } finally {
+                    btnSalvarListaPrecos.disabled = false;
+                    btnSalvarListaPrecos.textContent = originalBtnText;
+                }
             });
 
             function atualizarNovaMargem(e) {
                 const input = e.target;
                 const pratoItemDiv = input.closest('.prato-item');
+                const itemId = pratoItemDiv.dataset.id;
+                const itemType = pratoItemDiv.dataset.type;
                 const custo = parseFloat(pratoItemDiv.dataset.custo);
                 const novoPreco = parseFloat(input.value) || 0;
                 const novaMargemSpan = pratoItemDiv.querySelector('.nova-margem-span');
@@ -4319,8 +4475,10 @@
                 const margemReais = novoPreco - custo;
                 const novaMargemPercent = novoPreco > 0 ? (margemReais / novoPreco) * 100 : 0;
                 
-                novaMargemSpan.textContent = `${novaMargemPercent.toFixed(2)}%`;
-                novaMargemSpan.style.color = margemReais > 0 ? '#10b981' : '#ef4444';
+                novaMargemSpan.textContent = `${novaMargemPercent.toFixed(1)}%`;
+                novaMargemSpan.style.color = margemReais >= 0 ? '#10b981' : '#ef4444';
+
+                editedPricesCache[itemId] = { id: itemId, type: itemType, preco: novoPreco };
             }
 
             function aplicarMargemCategoria(e) {
@@ -4422,8 +4580,23 @@
                 });
             });
 
+            function applyTheme(isDark) {
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.body.classList.add('dark-theme');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.body.classList.remove('dark-theme');
+                }
+                if (themeToggle) themeToggle.checked = isDark;
+                try { localStorage.setItem('cmv_theme', isDark ? 'dark' : 'light'); } catch(e) {}
+            }
+
+            const currentTheme = localStorage.getItem('cmv_theme') || 'light';
+            applyTheme(currentTheme === 'dark');
+
             themeToggle.addEventListener('change', () => {
-                document.body.classList.toggle('dark-theme');
+                applyTheme(themeToggle.checked);
             });
 
             micToggle.addEventListener('change', () => {
