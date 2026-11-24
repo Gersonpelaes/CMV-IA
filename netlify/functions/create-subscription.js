@@ -1,4 +1,20 @@
 const axios = require('axios');
+const admin = require('firebase-admin');
+
+if (!admin.apps.length) {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        try {
+            admin.initializeApp({
+                credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
+            });
+        } catch (e) {
+            admin.initializeApp();
+        }
+    } else {
+        admin.initializeApp();
+    }
+}
+const db = admin.firestore();
 
 exports.handler = async function(event, context) {
     if (event.httpMethod !== 'POST') {
@@ -19,8 +35,29 @@ exports.handler = async function(event, context) {
             return { statusCode: 500, body: JSON.stringify({ error: 'Erro de configuração do servidor. Token ausente.' }) };
         }
 
-        const title = planType === 'anual' ? "Acesso Anual CMV.IA" : "Acesso Mensal CMV.IA";
-        const price = planType === 'anual' ? 99.00 : 25.00;
+        let title = planType === 'anual' ? "Acesso Anual CMV.IA" : "Acesso Mensal CMV.IA";
+        let price = planType === 'anual' ? 99.00 : 25.00;
+
+        // Consulta se existe valor customizado para este cliente ou configuração global
+        try {
+            const restDoc = await db.collection('restaurants').doc(uid).get();
+            if (restDoc.exists) {
+                const restData = restDoc.data();
+                if (restData.planPrice !== undefined && restData.planPrice !== null && !isNaN(parseFloat(restData.planPrice))) {
+                    price = parseFloat(restData.planPrice);
+                    if (restData.planType) title = `Acesso ${restData.planType.toUpperCase()} CMV.IA`;
+                }
+            } else {
+                const cfgDoc = await db.collection('saas_config').doc('pricing').get();
+                if (cfgDoc.exists) {
+                    const cfg = cfgDoc.data();
+                    if (planType === 'anual' && cfg.annual) price = parseFloat(cfg.annual);
+                    else if (cfg.monthly) price = parseFloat(cfg.monthly);
+                }
+            }
+        } catch (errDb) {
+            console.warn("Usando preço padrão do código:", errDb.message);
+        }
 
         const response = await axios.post("https://api.mercadopago.com/checkout/preferences", {
             items: [
@@ -50,7 +87,7 @@ exports.handler = async function(event, context) {
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ init_point: response.data.init_point })
+            body: JSON.stringify({ init_point: response.data.init_point, price: price })
         };
     } catch (error) {
         console.error("Erro ao criar preferência de pagamento:", error.response?.data || error.message);

@@ -291,6 +291,25 @@
         </div>
     </div>
 
+    <!-- Blocked View (Bloqueio Manual pelo Gestor SaaS) -->
+    <div id="blocked-view" class="hidden items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 absolute inset-0 z-50 p-4">
+        <div class="w-full max-w-md">
+            <div class="card p-8 text-center border-red-500/40 shadow-2xl">
+                <div class="w-16 h-16 mx-auto bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mb-4 border border-red-200 dark:border-red-800">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-primary mb-2">Acesso Temporariamente Suspenso</h2>
+                <p id="blocked-reason-text" class="text-secondary mb-6 text-sm">Sua conta foi suspensa temporariamente pela administração do sistema. Entre em contato com o suporte para reativar seu acesso.</p>
+                <div class="flex flex-col gap-3 mb-4">
+                    <a id="btn-suporte-blocked" href="https://wa.me/5511999998888?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20com%20meu%20acesso%20no%20CMV.IA" target="_blank" class="w-full btn-primary bg-green-600 hover:bg-green-700 py-3 flex justify-center items-center gap-2 font-bold text-white rounded-xl shadow-md transition">
+                        <span>Falar com o Suporte</span>
+                    </a>
+                </div>
+                <button id="btn-logout-blocked" class="text-secondary hover:text-red-500 underline text-sm transition">Sair da Conta</button>
+            </div>
+        </div>
+    </div>
+
     <div id="app-container" class="relative min-h-screen md:flex hidden">
         <!-- Overlay para menu mobile -->
         <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
@@ -4765,6 +4784,28 @@
                 });
             }
 
+            function showBlockedView(reason) {
+                authView.style.display = 'none';
+                appContainer.style.display = 'none';
+                const subView = document.getElementById('subscription-view');
+                if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
+                const blockedView = document.getElementById('blocked-view');
+                if (blockedView) {
+                    blockedView.style.display = 'flex';
+                    blockedView.classList.remove('hidden');
+                    const reasonEl = document.getElementById('blocked-reason-text');
+                    if (reasonEl && reason) reasonEl.textContent = reason;
+                    const btnLogoutBlocked = document.getElementById('btn-logout-blocked');
+                    if (btnLogoutBlocked) {
+                        btnLogoutBlocked.onclick = async () => {
+                            try { localStorage.removeItem('cmv_user_logged'); } catch(e) {}
+                            await signOut(auth);
+                            window.location.reload();
+                        };
+                    }
+                }
+            }
+
             function showSubscriptionView(uid, email) {
                 authView.style.display = 'none';
                 appContainer.style.display = 'none';
@@ -4863,6 +4904,16 @@
                             if (userDoc.exists()) {
                                 const userData = userDoc.data();
                                 const planStatus = userData.planStatus || 'trial';
+                                const isBlocked = userData.isBlocked === true || planStatus === 'blocked';
+
+                                // Se a conta estiver bloqueada pelo Gestor SaaS
+                                if (isBlocked) {
+                                    showBlockedView(userData.blockedReason || 'Sua conta foi suspensa temporariamente pela administração.');
+                                    return;
+                                } else {
+                                    const blkView = document.getElementById('blocked-view');
+                                    if (blkView) { blkView.style.display = 'none'; blkView.classList.add('hidden'); }
+                                }
                                 
                                 let trialEndsAt = new Date();
                                 if (userData.trialEndsAt) {
@@ -4875,7 +4926,7 @@
                                 
                                 const now = new Date();
                                 
-                                if (planStatus === 'trial' && now > trialEndsAt) {
+                                if ((planStatus === 'trial' || planStatus === 'expired') && now > trialEndsAt) {
                                     showSubscriptionView(user.uid, user.email);
                                     return;
                                 }
@@ -4925,15 +4976,17 @@
                                 }
                                 
                                 if (badge && botoesAssinatura) {
-                                    if (planStatus === 'active') {
-                                        badge.textContent = 'Ativo';
-                                        badge.className = 'font-bold text-green-500';
+                                    if (planStatus === 'active' || planStatus === 'courtesy') {
+                                        badge.textContent = planStatus === 'courtesy' ? 'Cortesia (Especial)' : 'Ativo';
+                                        badge.className = planStatus === 'courtesy' ? 'font-bold text-blue-500' : 'font-bold text-green-500';
                                         trialText.style.display = 'none';
                                         botoesAssinatura.style.display = 'none';
                                         
-                                        // Esconde modal de assinatura se estiver visível
+                                        // Esconde modais de assinatura ou bloqueio se estiver visível
                                         const subView = document.getElementById('subscription-view');
                                         if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
+                                        const blkView = document.getElementById('blocked-view');
+                                        if (blkView) { blkView.style.display = 'none'; blkView.classList.add('hidden'); }
                                         appContainer.style.display = 'flex';
                                     } else {
                                         badge.textContent = 'Trial (Teste)';
@@ -4990,6 +5043,8 @@
                         authView.style.display = 'none';
                         const subView = document.getElementById('subscription-view');
                         if (subView) { subView.style.display = 'none'; subView.classList.add('hidden'); }
+                        const blkView = document.getElementById('blocked-view');
+                        if (blkView) { blkView.style.display = 'none'; blkView.classList.add('hidden'); }
                         appContainer.style.display = 'flex';
                         setupRealtimeListeners(); 
                         let lastView = 'dashboard';

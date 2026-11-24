@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMV.IA - Painel de Gestão SaaS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        .dark {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-card: #1f2937;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+    <!-- Preloader inicial -->
+    <div id="admin-preloader" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 text-white">
+        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="font-semibold text-slate-300">Carregando Painel de Gestão SaaS...</p>
+    </div>
+
+    <!-- TELA DE LOGIN DO ADMINISTRADOR -->
+    <div id="admin-auth-view" class="hidden min-h-screen flex items-center justify-center p-4 bg-slate-900">
+        <div class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-8 text-slate-100">
+            <div class="text-center mb-8">
+                <div class="inline-flex p-3 bg-blue-600/20 text-blue-400 rounded-xl mb-3 border border-blue-500/30">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-black tracking-tight text-white">CMV.IA - Gestor SaaS</h2>
+                <p class="text-slate-400 text-sm mt-1">Acesso Restrito à Administração</p>
+            </div>
+
+            <div id="auth-error-alert" class="hidden mb-4 p-3.5 bg-red-950/60 border border-red-800 text-red-300 text-xs rounded-xl font-medium"></div>
+
+            <form id="admin-login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Email do Administrador</label>
+                    <input type="email" id="admin-email" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="admin@cmvia.com">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Senha</label>
+                    <input type="password" id="admin-password" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="••••••••">
+                </div>
+
+                <!-- Chave Mestre Opcional para Primeiro Acesso -->
+                <div class="pt-2">
+                    <button type="button" id="btn-toggle-master-key" class="text-xs text-blue-400 hover:text-blue-300 underline font-medium">Primeiro Acesso / Ativar Permissão Master?</button>
+                    <div id="master-key-container" class="hidden mt-2 p-3 bg-slate-900/60 border border-slate-700 rounded-xl">
+                        <label class="block text-xs font-semibold text-amber-400 mb-1">Chave Mestre de Segurança (Setup)</label>
+                        <input type="password" id="admin-master-key" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Digite a chave mestre (padrão: cmv2026admin)">
+                        <span class="text-[10px] text-slate-400 block mt-1">Permite habilitar este email como Administrador Master do sistema.</span>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-admin-submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-600/30 transition duration-150 flex items-center justify-center gap-2 mt-4">
+                    <span id="btn-admin-submit-text">Entrar no Painel</span>
+                    <span id="btn-admin-submit-loader" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <a href="/" class="text-xs text-slate-500 hover:text-slate-400 transition">← Voltar para o App do Restaurante</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE ACESSO NEGADO -->
+    <div id="admin-denied-view" class="hidden min-h-screen flex items-center justify-center p-4 bg-slate-900 text-white">
+        <div class="max-w-md w-full bg-slate-800 border border-red-500/40 rounded-2xl p-8 text-center shadow-2xl">
+            <div class="w-16 h-16 mx-auto bg-red-950/80 text-red-400 rounded-full flex items-center justify-center mb-4 border border-red-700">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-xl font-bold mb-2">Acesso Restrito</h3>
+            <p class="text-slate-300 text-sm mb-4">Esta conta (<span id="denied-user-email" class="font-semibold text-white"></span>) não possui privilégios de Administrador do SaaS.</p>
+            <p class="text-xs text-slate-400 mb-6">Se você é o proprietário do SaaS, utilize sua chave de segurança ou faça login com a conta master.</p>
+            <div class="flex flex-col gap-2">
+                <button id="btn-admin-denied-logout" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-4 rounded-xl transition">Desconectar e Trocar de Conta</button>
+                <a href="/" class="text-xs text-blue-400 hover:underline pt-2">Ir para a tela inicial do restaurante</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL DO GESTOR SAAS (ADMIN DASHBOARD) -->
+    <div id="admin-dashboard-view" class="hidden flex-1 flex flex-col">
+        <!-- Barra de Navegação Superior -->
+        <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-xl shadow-md">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                            CMV.IA <span class="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-200 dark:border-blue-800">Gestor SaaS</span>
+                        </h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Painel de Controle Central de Assinaturas e Clientes</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <!-- Botão Configurações de Preços do SaaS -->
+                    <button id="btn-open-saas-settings" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition" title="Configurar Preços Globais">
+                        <span>⚙️</span>
+                        <span class="hidden sm:inline">Configurar Planos</span>
+                    </button>
+
+                    <!-- Botão Alternar Tema Claro/Escuro -->
+                    <button id="btn-theme-toggle" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Alternar Tema">
+                        <span id="theme-icon-light">🌙</span>
+                        <span id="theme-icon-dark" class="hidden">☀️</span>
+                    </button>
+
+                    <!-- Perfil e Logout -->
+                    <div class="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+                        <div class="text-right hidden sm:block">
+                            <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 block" id="header-admin-email">admin@cmvia.com</span>
+                            <span class="text-[10px] text-green-600 dark:text-green-400 font-bold">Master Admin</span>
+                        </div>
+                        <button id="btn-admin-logout" class="p-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition" title="Desconectar do Gestor">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Conteúdo Principal -->
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+            <!-- CARDS DE MÉTRICAS / KPIS DO SAAS -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+                <!-- Total Clientes -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition hover:shadow-md">
+                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+                        <span class="text-xs font-semibold">Total Clientes</span>
+                        <span class="text-base">👥</span>
+                    </div>
+                    <div class="text-2xl font-black text-slate-900 dark:text-white" id="kpi-total-clientes">0</div>
+                    <span class="text-[10px] text-slate-400">Restaurantes na base</span>
+                </div>
+
+                <!-- Ativos (Pagantes) -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-green-200 dark:border-green-900/60 shadow-sm transition hover:shadow-md">
+                    <div class="flex items-center justify-between text-green-600 dark:text-green-400 mb-2">
+                        <span class="text-xs font-semibold">Ativos Pagantes</span>
+                        <span class="text-base">🟢</span>
+                    </div>
+                    <div class="text-2xl font-black text-green-600 dark:text-green-400" id="kpi-ativos">0</div>
+                    <span class="text-[10px] text-slate-400">Assinaturas regulares</span>
+                </div>
+
+                <!-- Em Teste (Trial) -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/60 shadow-sm transition hover:shadow-md">
+                    <div class="flex items-center justify-between text-amber-600 dark:text-amber-400 mb-2">
+                        <span class="text-xs font-semibold">Em Teste (Trial)</span>
+                        <span class="text-base">⏳</span>
+                    </div>
+                    <div class="text-2xl font-black text-amber-600 dark:text-amber-400" id="kpi-trial">0</div>
+                    <span class="text-[10px] text-slate-400">Potenciais assinantes</span>
+                </div>
+
+                <!-- Cortesias -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-blue-200 dark:border-blue-900/60 shadow-sm transition hover:shadow-md">
+                    <div class="flex items-center justify-between text-blue-600 dark:text-blue-400 mb-2">
+                        <span class="text-xs font-semibold">Cortesias</span>
+                        <span class="text-base">🎁</span>
+                    </div>
+                    <div class="text-2xl font-black text-blue-600 dark:text-blue-400" id="kpi-cortesia">0</div>
+                    <span class="text-[10px] text-slate-400">Acessos bonificados</span>
+                </div>
+
+                <!-- Bloqueados / Vencidos -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-red-200 dark:border-red-900/60 shadow-sm transition hover:shadow-md">
+                    <div class="flex items-center justify-between text-red-600 dark:text-red-400 mb-2">
+                        <span class="text-xs font-semibold">Bloqueados / Vencidos</span>
+                        <span class="text-base">🚫</span>
+                    </div>
+                    <div class="text-2xl font-black text-red-600 dark:text-red-400" id="kpi-bloqueados">0</div>
+                    <span class="text-[10px] text-slate-400">Sem acesso ativo</span>
+                </div>
+
+                <!-- MRR Estimado -->
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 shadow-sm transition hover:shadow-md">
+                    <div class="flex items-center justify-between text-indigo-600 dark:text-indigo-400 mb-2">
+                        <span class="text-xs font-semibold">MRR Estimado</span>
+                        <span class="text-base">💰</span>
+                    </div>
+                    <div class="text-2xl font-black text-indigo-600 dark:text-indigo-400" id="kpi-mrr">R$ 0</div>
+                    <span class="text-[10px] text-slate-400">Receita Recorrente/mês</span>
+                </div>
+            </div>
+
+            <!-- BARRA DE CONTROLES E FILTROS -->
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+                <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+                    <!-- Campo de Busca -->
+                    <div class="relative flex-1">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            🔍
+                        </span>
+                        <input type="text" id="filter-search" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Buscar por restaurante, email ou UID...">
+                    </div>
+
+                    <!-- Botões de Ação Global -->
+                    <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <button id="btn-export-csv" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition shadow-sm" title="Baixar relatório em formato CSV">
+                            📥 <span>Exportar CSV</span>
+                        </button>
+                        <button id="btn-novo-cliente" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-blue-600/20" title="Cadastrar restaurante diretamente">
+                            ➕ <span>Novo Cliente</span>
+                        </button>
+                        <button id="btn-refresh-list" class="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl transition" title="Atualizar dados em tempo real">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros por Pílulas e Ordenação -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                    <div class="flex flex-wrap gap-1.5" id="status-filter-pills">
+                        <button data-status="all" class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 text-white transition">Todos (<span id="count-all">0</span>)</button>
+                        <button data-status="active" class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Ativos (<span id="count-active">0</span>)</button>
+                        <button data-status="trial" class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Em Teste (<span id="count-trial">0</span>)</button>
+                        <button data-status="courtesy" class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Cortesia (<span id="count-courtesy">0</span>)</button>
+                        <button data-status="blocked" class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Bloqueados (<span id="count-blocked">0</span>)</button>
+                        <button data-status="expired" class="filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Vencidos (<span id="count-expired">0</span>)</button>
+                    </div>
+
+                    <!-- Ordenação -->
+                    <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <span>Ordenar:</span>
+                        <select id="select-sort" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 focus:outline-none">
+                            <option value="recentes">Mais Recentes</option>
+                            <option value="antigos">Mais Antigos</option>
+                            <option value="vencimento">Vencimento Próximo</option>
+                            <option value="nome">Nome (A-Z)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABELA DE CLIENTES -->
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div class="table-responsive">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                <th class="py-3 px-4">Restaurante / ID</th>
+                                <th class="py-3 px-4">Contato / Email</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4">Validade / Vencimento</th>
+                                <th class="py-3 px-4">Plano & Valor</th>
+                                <th class="py-3 px-4 text-right">Ações de Gestão</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
+                            <tr>
+                                <td colspan="6" class="py-12 text-center text-slate-400">
+                                    <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                    Buscando clientes no banco de dados...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="table-empty-state" class="hidden p-12 text-center text-slate-400">
+                    <span class="text-3xl block mb-2">🔍</span>
+                    <p class="font-medium text-slate-600 dark:text-slate-300">Nenhum cliente encontrado com os filtros selecionados.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- MODAIS DE GESTÃO DO SAAS -->
+    <!-- ======================================================== -->
+
+    <!-- 1. MODAL DAR CORTESIA -->
+    <div id="modal-cortesia" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700 mb-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🎁</span> Conceder Cortesia / Acesso Gratuito
+                </h3>
+                <button type="button" class="btn-close-modal text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Cliente: <strong id="modal-cortesia-client-name" class="text-slate-800 dark:text-slate-100"></strong></p>
+            
+            <form id="form-dar-cortesia" class="space-y-4">
+                <input type="hidden" id="modal-cortesia-client-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Duração da Cortesia</label>
+                    <select id="select-cortesia-duracao" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="7">7 Dias (Bônus Rápido)</option>
+                        <option value="15">15 Dias</option>
+                        <option value="30" selected>30 Dias (1 Mês de Cortesia)</option>
+                        <option value="60">60 Dias (2 Meses)</option>
+                        <option value="90">90 Dias (3 Meses)</option>
+                        <option value="365">1 Ano Completo</option>
+                        <option value="vitalicio">Vitalício (Sem Expiração / Permanente)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Motivo / Observação (Interna)</label>
+                    <input type="text" id="input-cortesia-motivo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Parceria comercial, cliente VIP, teste estendido">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition">Confirmar Cortesia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. MODAL BLOQUEAR / LIBERAR -->
+    <div id="modal-bloqueio" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700 mb-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2" id="modal-bloqueio-title">
+                    <span>🚫</span> Bloquear Acesso do Cliente
+                </h3>
+                <button type="button" class="btn-close-modal text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Cliente: <strong id="modal-bloqueio-client-name" class="text-slate-800 dark:text-slate-100"></strong></p>
+
+            <form id="form-bloquear-cliente" class="space-y-4">
+                <input type="hidden" id="modal-bloqueio-client-id">
+                <input type="hidden" id="modal-bloqueio-action" value="block">
+
+                <div id="modal-bloqueio-reason-container">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Motivo do Bloqueio (visível para o cliente)</label>
+                    <textarea id="input-bloqueio-motivo" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Ex: Mensalidade em atraso. Entre em contato pelo WhatsApp para regularizar."></textarea>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" id="btn-submit-bloqueio" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md transition">Confirmar Bloqueio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. MODAL ALTERAR VALOR DO PLANO -->
+    <div id="modal-alterar-plano" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700 mb-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>💲</span> Alterar Plano & Valor de Cobrança
+                </h3>
+                <button type="button" class="btn-close-modal text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Cliente: <strong id="modal-plano-client-name" class="text-slate-800 dark:text-slate-100"></strong></p>
+
+            <form id="form-alterar-plano" class="space-y-4">
+                <input type="hidden" id="modal-plano-client-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Modalidade do Plano</label>
+                    <select id="select-plano-tipo" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="mensal">Mensal</option>
+                        <option value="anual">Anual</option>
+                        <option value="personalizado">Personalizado / Especial</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Valor da Mensalidade (R$)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-slate-400 font-bold">R$</span>
+                        <input type="number" step="0.01" min="0" id="input-plano-valor" required class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="25.00">
+                    </div>
+                    <span class="text-[10px] text-slate-400 mt-1 block">Este valor será utilizado nas preferências de checkout deste cliente.</span>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-md transition">Salvar Novo Valor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. MODAL RECUPERAÇÃO DE SENHA / LINK DIRETO -->
+    <div id="modal-recuperar-senha" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700 mb-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>✉️</span> Recuperação de Senha
+                </h3>
+                <button type="button" class="btn-close-modal text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <p class="text-xs text-slate-600 dark:text-slate-300 mb-4">
+                Enviar email de redefinição de senha para: <strong id="modal-senha-client-email" class="text-blue-600 dark:text-blue-400"></strong>
+            </p>
+
+            <div id="modal-senha-alert" class="hidden mb-4 p-3 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-xl text-xs text-green-700 dark:text-green-300">
+                ✅ Email de redefinição enviado com sucesso pelo Firebase Auth!
+            </div>
+
+            <!-- Link de Redefinição Direta para WhatsApp -->
+            <div id="modal-senha-direct-link-container" class="hidden space-y-2 mb-4 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
+                <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300">Link Direto de Redefinição (Envie pelo WhatsApp se o cliente não achar no email):</label>
+                <div class="flex gap-2">
+                    <input type="text" id="input-senha-direct-link" readonly class="w-full text-[11px] p-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none">
+                    <button type="button" id="btn-copy-direct-link" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition">Copiar</button>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Fechar</button>
+                <button type="button" id="btn-trigger-send-reset" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition flex items-center gap-1.5">
+                    <span>Disparar Email Agora</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. MODAL ANOTAÇÕES / CRM DO CLIENTE -->
+    <div id="modal-anotacoes" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700 mb-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📝</span> Observações & CRM Interno
+                </h3>
+                <button type="button" class="btn-close-modal text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Cliente: <strong id="modal-anotacoes-client-name" class="text-slate-800 dark:text-slate-100"></strong></p>
+
+            <form id="form-salvar-anotacoes" class="space-y-4">
+                <input type="hidden" id="modal-anotacoes-client-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Telefone / WhatsApp de Contato</label>
+                    <input type="text" id="input-anotacoes-telefone" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: (11) 99999-8888">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Histórico de Atendimento / Notas do Gestor</label>
+                    <textarea id="textarea-anotacoes" rows="5" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Anote negociações, preferências, acordos de pagamento, promessas de fechamento..."></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition">Salvar Observações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 6. MODAL CONFIGURAÇÃO GLOBAL DE PLANOS SAAS -->
+    <div id="modal-saas-settings" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700 mb-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>⚙️</span> Configurações Globais do SaaS
+                </h3>
+                <button type="button" class="btn-close-modal text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <form id="form-saas-settings" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Preço Padrão Mensal (R$)</label>
+                        <input type="number" step="0.01" min="0" id="global-preco-mensal" value="25.00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Preço Padrão Anual (R$)</label>
+                        <input type="number" step="0.01" min="0" id="global-preco-anual" value="99.00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Dias de Trial Padrão</label>
+                        <input type="number" min="1" id="global-trial-dias" value="31" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">WhatsApp Oficial de Suporte</label>
+                        <input type="text" id="global-suporte-whatsapp" placeholder="5511999998888" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl text-[11px] text-blue-800 dark:text-blue-300">
+                    💡 Essas configurações definem os valores padrão aplicados para novos clientes e para as preferências geradas pelo checkout do Mercado Pago.
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition">Salvar Configurações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 7. MODAL NOVO CLIENTE MANUAL -->
+    <div id="modal-novo-cliente" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700 mb-4">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>➕</span> Cadastrar Cliente Manualmente
+                </h3>
+                <button type="button" class="btn-close-modal text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">&times;</button>
+            </div>
+            
+            <form id="form-novo-cliente" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nome do Restaurante / Negócio</label>
+                    <input type="text" id="novo-cliente-nome" required class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Pizzaria Bella Italia">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Email do Proprietário</label>
+                    <input type="email" id="novo-cliente-email" required class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="proprietario@email.com">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Status Inicial</label>
+                        <select id="novo-cliente-status" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none">
+                            <option value="trial">Trial (Teste)</option>
+                            <option value="courtesy">Cortesia</option>
+                            <option value="active">Ativo (Liberado)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Dias de Acesso</label>
+                        <input type="number" id="novo-cliente-dias" value="31" min="1" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telefone / WhatsApp</label>
+                    <input type="text" id="novo-cliente-telefone" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none" placeholder="(11) 98888-7777">
+                </div>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" class="btn-close-modal px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition">Salvar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- JAVASCRIPT DO PAINEL SAAS (FIREBASE + LOGICA CENTRAL) -->
+    <!-- ======================================================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged,
+            sendPasswordResetEmail
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            getDoc, 
+            getDocs, 
+            setDoc, 
+            updateDoc, 
+            deleteDoc, 
+            onSnapshot, 
+            query, 
+            orderBy, 
+            Timestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variáveis Globais
+        let app, auth, db;
+        let currentUser = null;
+        let allClients = [];
+        let unsubscribeClients = null;
+        let currentFilterStatus = 'all';
+        let currentSearchQuery = '';
+        let currentSortOrder = 'recentes';
+        let globalPricing = { monthly: 25.00, annual: 99.00, trialDays: 31, whatsapp: '' };
+
+        // Chave Mestre de Segurança padrão (pode ser sobrescrita pelo gestor)
+        const DEFAULT_MASTER_KEY = "cmv2026admin";
+
+        // Elementos de UI
+        const preloader = document.getElementById('admin-preloader');
+        const authView = document.getElementById('admin-auth-view');
+        const deniedView = document.getElementById('admin-denied-view');
+        const dashboardView = document.getElementById('admin-dashboard-view');
+        const authErrorAlert = document.getElementById('auth-error-alert');
+        const clientsTableBody = document.getElementById('clients-table-body');
+        const tableEmptyState = document.getElementById('table-empty-state');
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', async () => {
+            initTheme();
+            setupEventListeners();
+
+            try {
+                // Busca configuração do Firebase
+                let firebaseConfig = null;
+                const configResponse = await fetch('/.netlify/functions/firebase-config');
+                if (configResponse.ok) {
+                    firebaseConfig = await configResponse.json();
+                }
+
+                if (!firebaseConfig || !firebaseConfig.apiKey) {
+                    throw new Error("Chaves do Firebase não encontradas.");
+                }
+
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Ouve mudanças de autenticação
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        const isAdmin = await checkAdminPrivileges(user);
+                        if (isAdmin) {
+                            showDashboard();
+                            carregarClientesEmTempoReal();
+                            carregarConfiguracoesGlobais();
+                        } else {
+                            showDenied(user.email);
+                        }
+                    } else {
+                        currentUser = null;
+                        if (unsubscribeClients) unsubscribeClients();
+                        showAuth();
+                    }
+                });
+
+            } catch (err) {
+                console.error("Erro na inicialização:", err);
+                preloader.innerHTML = `
+                    <div class="text-center p-6 bg-red-950/80 border border-red-800 rounded-2xl max-w-md mx-4">
+                        <h3 class="text-lg font-bold text-red-200 mb-2">Erro de Inicialização</h3>
+                        <p class="text-xs text-red-300 mb-4">${err.message}</p>
+                        <a href="/" class="text-xs bg-slate-800 text-slate-200 px-4 py-2 rounded-xl">Voltar ao site</a>
+                    </div>
+                `;
+            }
+        });
+
+        // ==========================================
+        // CONTROLE DE ACESSO E AUTENTICAÇÃO
+        // ==========================================
+        async function checkAdminPrivileges(user) {
+            try {
+                // 1. Verifica na coleção 'admins'
+                const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+                if (adminDoc.exists() && adminDoc.data().isAdmin === true) {
+                    return true;
+                }
+
+                // 2. Verifica se o documento de restaurante do usuário possui role 'admin'
+                const restaurantDoc = await getDoc(doc(db, 'restaurants', user.uid));
+                if (restaurantDoc.exists() && (restaurantDoc.data().role === 'admin' || restaurantDoc.data().isAdmin === true)) {
+                    return true;
+                }
+
+                // 3. Se houver chave mestre salva na sessão atual
+                const sessionMasterKey = sessionStorage.getItem('cmv_master_auth_passed');
+                if (sessionMasterKey === 'true') {
+                    // Promove o usuário automaticamente no banco
+                    await setDoc(doc(db, 'admins', user.uid), {
+                        email: user.email,
+                        isAdmin: true,
+                        role: 'admin',
+                        promotedAt: new Date()
+                    }, { merge: true });
+                    return true;
+                }
+
+                return false;
+            } catch (e) {
+                console.warn("Erro ao verificar admin:", e);
+                return false;
+            }
+        }
+
+        // Formulário de Login do Administrador
+        document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('admin-email').value.trim();
+            const password = document.getElementById('admin-password').value;
+            const masterKey = document.getElementById('admin-master-key').value.trim();
+            const submitBtn = document.getElementById('btn-admin-submit');
+            const submitText = document.getElementById('btn-admin-submit-text');
+            const submitLoader = document.getElementById('btn-admin-submit-loader');
+
+            authErrorAlert.classList.add('hidden');
+            submitBtn.disabled = true;
+            submitText.classList.add('hidden');
+            submitLoader.classList.remove('hidden');
+
+            try {
+                // Se informou a chave mestre para primeiro acesso
+                if (masterKey) {
+                    if (masterKey === DEFAULT_MASTER_KEY) {
+                        sessionStorage.setItem('cmv_master_auth_passed', 'true');
+                    } else {
+                        throw new Error("Chave Mestre de Segurança inválida.");
+                    }
+                }
+
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged cuidará da validação de privilégios
+
+            } catch (err) {
+                console.error("Erro no login admin:", err);
+                let msg = err.message;
+                if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+                    msg = "Email ou senha incorretos.";
+                }
+                authErrorAlert.textContent = msg;
+                authErrorAlert.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitText.classList.remove('hidden');
+                submitLoader.classList.add('hidden');
+            }
+        });
+
+        // Alternar campo de Chave Mestre
+        document.getElementById('btn-toggle-master-key').addEventListener('click', () => {
+            const container = document.getElementById('master-key-container');
+            container.classList.toggle('hidden');
+        });
+
+        // Logout
+        document.getElementById('btn-admin-logout').addEventListener('click', async () => {
+            sessionStorage.removeItem('cmv_master_auth_passed');
+            await signOut(auth);
+            window.location.reload();
+        });
+        document.getElementById('btn-admin-denied-logout').addEventListener('click', async () => {
+            sessionStorage.removeItem('cmv_master_auth_passed');
+            await signOut(auth);
+            window.location.reload();
+        });
+
+        // Exibição de Telas
+        function showAuth() {
+            preloader.classList.add('hidden');
+            deniedView.classList.add('hidden');
+            dashboardView.classList.add('hidden');
+            authView.classList.remove('hidden');
+        }
+
+        function showDenied(email) {
+            preloader.classList.add('hidden');
+            authView.classList.add('hidden');
+            dashboardView.classList.add('hidden');
+            document.getElementById('denied-user-email').textContent = email;
+            deniedView.classList.remove('hidden');
+        }
+
+        function showDashboard() {
+            preloader.classList.add('hidden');
+            authView.classList.add('hidden');
+            deniedView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            if (currentUser) {
+                document.getElementById('header-admin-email').textContent = currentUser.email;
+            }
+        }
+
+        // ==========================================
+        // CARREGAMENTO E SINCRONIZAÇÃO EM TEMPO REAL
+        // ==========================================
+        function carregarClientesEmTempoReal() {
+            if (unsubscribeClients) unsubscribeClients();
+
+            const q = collection(db, 'restaurants');
+            unsubscribeClients = onSnapshot(q, (snapshot) => {
+                allClients = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    allClients.push({
+                        id: docSnap.id,
+                        name: data.name || 'Sem Nome',
+                        email: data.email || 'Não informado',
+                        planStatus: data.planStatus || 'trial',
+                        trialEndsAt: data.trialEndsAt ? parseFirebaseDate(data.trialEndsAt) : null,
+                        planPrice: data.planPrice !== undefined ? parseFloat(data.planPrice) : null,
+                        planType: data.planType || 'mensal',
+                        isBlocked: data.isBlocked === true || data.planStatus === 'blocked',
+                        blockedReason: data.blockedReason || '',
+                        createdAt: data.createdAt ? parseFirebaseDate(data.createdAt) : null,
+                        notes: data.notes || '',
+                        phone: data.phone || data.whatsapp || '',
+                        lastPaymentId: data.lastPaymentId || null
+                    });
+                });
+
+                atualizarKPIs();
+                renderizarTabela();
+            }, (error) => {
+                console.error("Erro ao ouvir clientes:", error);
+            });
+        }
+
+        async function carregarConfiguracoesGlobais() {
+            try {
+                const cfgDoc = await getDoc(doc(db, 'saas_config', 'pricing'));
+                if (cfgDoc.exists()) {
+                    globalPricing = Object.assign(globalPricing, cfgDoc.data());
+                    document.getElementById('global-preco-mensal').value = globalPricing.monthly || 25.00;
+                    document.getElementById('global-preco-anual').value = globalPricing.annual || 99.00;
+                    document.getElementById('global-trial-dias').value = globalPricing.trialDays || 31;
+                    document.getElementById('global-suporte-whatsapp').value = globalPricing.whatsapp || '';
+                }
+            } catch (e) {
+                console.warn("Configurações de preços padrão em uso.");
+            }
+        }
+
+        function parseFirebaseDate(val) {
+            if (!val) return null;
+            if (typeof val.toDate === 'function') return val.toDate();
+            if (val instanceof Date) return val;
+            if (typeof val === 'string' || typeof val === 'number') return new Date(val);
+            return null;
+        }
+
+        // ==========================================
+        // KPIS E MÉTRICAS
+        // ==========================================
+        function atualizarKPIs() {
+            const now = new Date();
+            let countTotal = allClients.length;
+            let countAtivos = 0;
+            let countTrial = 0;
+            let countCortesia = 0;
+            let countBloqueados = 0;
+            let countVencidos = 0;
+            let mrr = 0;
+
+            allClients.forEach(c => {
+                const status = calcularStatusReal(c, now);
+                if (status === 'active') {
+                    countAtivos++;
+                    const price = c.planPrice !== null ? c.planPrice : (c.planType === 'anual' ? globalPricing.annual / 12 : globalPricing.monthly);
+                    mrr += price;
+                } else if (status === 'trial') {
+                    countTrial++;
+                } else if (status === 'courtesy') {
+                    countCortesia++;
+                } else if (status === 'blocked') {
+                    countBloqueados++;
+                } else if (status === 'expired') {
+                    countVencidos++;
+                }
+            });
+
+            document.getElementById('kpi-total-clientes').textContent = countTotal;
+            document.getElementById('kpi-ativos').textContent = countAtivos;
+            document.getElementById('kpi-trial').textContent = countTrial;
+            document.getElementById('kpi-cortesia').textContent = countCortesia;
+            document.getElementById('kpi-bloqueados').textContent = countBloqueados + countVencidos;
+            document.getElementById('kpi-mrr').textContent = `R$ ${mrr.toFixed(2).replace('.', ',')}`;
+
+            // Contadores nos botões de filtro
+            document.getElementById('count-all').textContent = countTotal;
+            document.getElementById('count-active').textContent = countAtivos;
+            document.getElementById('count-trial').textContent = countTrial;
+            document.getElementById('count-courtesy').textContent = countCortesia;
+            document.getElementById('count-blocked').textContent = countBloqueados;
+            document.getElementById('count-expired').textContent = countVencidos;
+        }
+
+        function calcularStatusReal(client, now = new Date()) {
+            if (client.isBlocked || client.planStatus === 'blocked') return 'blocked';
+            if (client.planStatus === 'courtesy') {
+                if (client.trialEndsAt && client.trialEndsAt < now) return 'expired';
+                return 'courtesy';
+            }
+            if (client.planStatus === 'active') {
+                if (client.trialEndsAt && client.trialEndsAt < now) return 'expired';
+                return 'active';
+            }
+            if (client.planStatus === 'trial') {
+                if (client.trialEndsAt && client.trialEndsAt < now) return 'expired';
+                return 'trial';
+            }
+            return 'trial';
+        }
+
+        // ==========================================
+        // RENDERIZAÇÃO DA TABELA DE CLIENTES
+        // ==========================================
+        function renderizarTabela() {
+            const now = new Date();
+            let filtrados = allClients.filter(c => {
+                const status = calcularStatusReal(c, now);
+                
+                // Filtro por status
+                if (currentFilterStatus !== 'all' && status !== currentFilterStatus) {
+                    return false;
+                }
+
+                // Filtro por busca
+                if (currentSearchQuery) {
+                    const q = currentSearchQuery.toLowerCase();
+                    const matchName = c.name.toLowerCase().includes(q);
+                    const matchEmail = c.email.toLowerCase().includes(q);
+                    const matchId = c.id.toLowerCase().includes(q);
+                    if (!matchName && !matchEmail && !matchId) return false;
+                }
+
+                return true;
+            });
+
+            // Ordenação
+            filtrados.sort((a, b) => {
+                if (currentSortOrder === 'recentes') {
+                    const tA = a.createdAt ? a.createdAt.getTime() : 0;
+                    const tB = b.createdAt ? b.createdAt.getTime() : 0;
+                    return tB - tA;
+                }
+                if (currentSortOrder === 'antigos') {
+                    const tA = a.createdAt ? a.createdAt.getTime() : 0;
+                    const tB = b.createdAt ? b.createdAt.getTime() : 0;
+                    return tA - tB;
+                }
+                if (currentSortOrder === 'vencimento') {
+                    const tA = a.trialEndsAt ? a.trialEndsAt.getTime() : 0;
+                    const tB = b.trialEndsAt ? b.trialEndsAt.getTime() : 0;
+                    return tA - tB;
+                }
+                if (currentSortOrder === 'nome') {
+                    return a.name.localeCompare(b.name);
+                }
+                return 0;
+            });
+
+            if (filtrados.length === 0) {
+                clientsTableBody.innerHTML = '';
+                tableEmptyState.classList.remove('hidden');
+                return;
+            }
+
+            tableEmptyState.classList.add('hidden');
+            clientsTableBody.innerHTML = filtrados.map(c => {
+                const statusReal = calcularStatusReal(c, now);
+                const badge = getStatusBadge(statusReal);
+                const validadeInfo = getValidadeInfo(c.trialEndsAt, now, statusReal);
+                const valorExibido = c.planPrice !== null ? `R$ ${c.planPrice.toFixed(2)}` : (c.planType === 'anual' ? `R$ ${globalPricing.annual.toFixed(2)}/ano` : `R$ ${globalPricing.monthly.toFixed(2)}/mês`);
+                const dataCriacao = c.createdAt ? c.createdAt.toLocaleDateString('pt-BR') : 'N/D';
+
+                return `
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-750 transition" data-id="${c.id}">
+                        <!-- Restaurante -->
+                        <td class="py-3.5 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-black text-sm flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-blue-900/40">
+                                    ${escapeHtml(c.name.substring(0, 2).toUpperCase())}
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-900 dark:text-white truncate">${escapeHtml(c.name)}</div>
+                                    <div class="flex items-center gap-1.5 text-[10px] text-slate-400">
+                                        <span class="font-mono bg-slate-100 dark:bg-slate-900 px-1 rounded">${c.id.substring(0, 8)}...</span>
+                                        <button onclick="copiarTexto('${c.id}')" class="hover:text-blue-500" title="Copiar UID completo">📋</button>
+                                        <span>• Criado: ${dataCriacao}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Contato -->
+                        <td class="py-3.5 px-4">
+                            <div class="text-slate-700 dark:text-slate-300 font-medium">${escapeHtml(c.email)}</div>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                ${c.phone ? `
+                                    <a href="https://wa.me/55${limparTelefone(c.phone)}?text=${encodeURIComponent('Olá! Aqui é da equipe CMV.IA. Como estão suas fichas técnicas?')}" target="_blank" class="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-bold hover:underline">
+                                        <span>💬</span> ${escapeHtml(c.phone)}
+                                    </a>
+                                ` : `
+                                    <button onclick="abrirModalAnotacoes('${c.id}')" class="text-[10px] text-slate-400 hover:text-blue-500">+ add WhatsApp</button>
+                                `}
+                                ${c.notes ? `<span class="text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-1.5 py-0.2 rounded font-semibold" title="${escapeHtml(c.notes)}">📝 Nota</span>` : ''}
+                            </div>
+                        </td>
+
+                        <!-- Status -->
+                        <td class="py-3.5 px-4">
+                            ${badge}
+                            ${c.blockedReason ? `<div class="text-[10px] text-red-500 mt-1 max-w-xs truncate" title="${escapeHtml(c.blockedReason)}">${escapeHtml(c.blockedReason)}</div>` : ''}
+                        </td>
+
+                        <!-- Validade -->
+                        <td class="py-3.5 px-4">
+                            <div class="font-semibold text-slate-800 dark:text-slate-200">${validadeInfo.data}</div>
+                            <div class="text-[10px] ${validadeInfo.corClass}">${validadeInfo.textoDias}</div>
+                        </td>
+
+                        <!-- Plano & Valor -->
+                        <td class="py-3.5 px-4">
+                            <div class="font-bold text-slate-900 dark:text-white">${valorExibido}</div>
+                            <div class="text-[10px] text-slate-400 uppercase">${escapeHtml(c.planType)}</div>
+                        </td>
+
+                        <!-- Ações Rápidas -->
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                <!-- Dar Cortesia -->
+                                <button onclick="abrirModalCortesia('${c.id}')" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 font-semibold text-xs" title="Conceder Cortesia">
+                                    🎁 Cortesia
+                                </button>
+
+                                <!-- Bloquear ou Liberar -->
+                                ${statusReal === 'blocked' ? `
+                                    <button onclick="abrirModalLiberar('${c.id}')" class="p-1.5 rounded-lg bg-green-50 hover:bg-green-100 dark:bg-green-950/40 dark:hover:bg-green-900/60 text-green-600 dark:text-green-400 font-semibold text-xs" title="Liberar Acesso">
+                                        🔓 Liberar
+                                    </button>
+                                ` : `
+                                    <button onclick="abrirModalBloqueio('${c.id}')" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 font-semibold text-xs" title="Bloquear Acesso">
+                                        🚫 Bloquear
+                                    </button>
+                                `}
+
+                                <!-- Alterar Preço -->
+                                <button onclick="abrirModalPlano('${c.id}')" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-xs" title="Alterar Valor do Plano">
+                                    💲 Preço
+                                </button>
+
+                                <!-- Recuperar Senha -->
+                                <button onclick="abrirModalSenha('${c.id}')" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-semibold text-xs" title="Enviar Recuperação de Senha">
+                                    ✉️ Senha
+                                </button>
+
+                                <!-- Extensão Rápida +7 dias -->
+                                <button onclick="estenderTrialRapido('${c.id}', 7)" class="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-400 font-semibold text-xs" title="Adicionar +7 dias de teste">
+                                    +7d
+                                </button>
+
+                                <!-- Anotações CRM -->
+                                <button onclick="abrirModalAnotacoes('${c.id}')" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs" title="Observações e Notas">
+                                    📝
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'active':
+                    return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300 border border-green-200 dark:border-green-800">🟢 Ativo</span>`;
+                case 'courtesy':
+                    return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">🎁 Cortesia</span>`;
+                case 'trial':
+                    return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">⏳ Teste (Trial)</span>`;
+                case 'blocked':
+                    return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-200 dark:border-red-800">🚫 Bloqueado</span>`;
+                case 'expired':
+                    return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">⚠️ Vencido</span>`;
+                default:
+                    return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600">Indefinido</span>`;
+            }
+        }
+
+        function getValidadeInfo(dataExp, now, status) {
+            if (!dataExp) return { data: 'Indeterminada', textoDias: 'Sem data de expiração', corClass: 'text-slate-400' };
+            
+            const diffMs = dataExp.getTime() - now.getTime();
+            const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffDias > 3650) {
+                return { data: 'Vitalícia', textoDias: 'Acesso permanente', corClass: 'text-blue-500 font-semibold' };
+            }
+
+            const dataFormatada = dataExp.toLocaleDateString('pt-BR');
+            if (diffDias > 0) {
+                const cor = diffDias <= 3 ? 'text-amber-500 font-bold' : 'text-slate-500';
+                return { data: dataFormatada, textoDias: `Expira em ${diffDias} ${diffDias === 1 ? 'dia' : 'dias'}`, corClass: cor };
+            } else {
+                const atraso = Math.abs(diffDias);
+                return { data: dataFormatada, textoDias: `Vencido há ${atraso} ${atraso === 1 ? 'dia' : 'dias'}`, corClass: 'text-red-500 font-bold' };
+            }
+        }
+
+        // ==========================================
+        // AÇÕES INDIVIDUAIS DO GESTOR SAAS
+        // ==========================================
+
+        // 1. Dar Cortesia
+        window.abrirModalCortesia = (clientId) => {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+            document.getElementById('modal-cortesia-client-id').value = clientId;
+            document.getElementById('modal-cortesia-client-name').textContent = `${client.name} (${client.email})`;
+            document.getElementById('select-cortesia-duracao').value = '30';
+            document.getElementById('input-cortesia-motivo').value = '';
+            abrirModal('modal-cortesia');
+        };
+
+        document.getElementById('form-dar-cortesia').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('modal-cortesia-client-id').value;
+            const duracao = document.getElementById('select-cortesia-duracao').value;
+            const motivo = document.getElementById('input-cortesia-motivo').value.trim();
+
+            const novaData = new Date();
+            if (duracao === 'vitalicio') {
+                novaData.setFullYear(2099, 11, 31);
+            } else {
+                novaData.setDate(novaData.getDate() + parseInt(duracao));
+            }
+
+            try {
+                await updateDoc(doc(db, 'restaurants', clientId), {
+                    planStatus: 'courtesy',
+                    isBlocked: false,
+                    trialEndsAt: Timestamp.fromDate(novaData),
+                    notes: motivo ? `Cortesia concedida (${duracao}d): ${motivo}` : undefined,
+                    updatedAt: new Date()
+                });
+                fecharModais();
+                alert('Cortesia concedida com sucesso!');
+            } catch (err) {
+                console.error("Erro ao conceder cortesia:", err);
+                alert("Falha ao conceder cortesia: " + err.message);
+            }
+        });
+
+        // 2. Bloquear / Liberar
+        window.abrirModalBloqueio = (clientId) => {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+            document.getElementById('modal-bloqueio-client-id').value = clientId;
+            document.getElementById('modal-bloqueio-action').value = 'block';
+            document.getElementById('modal-bloqueio-title').innerHTML = `<span>🚫</span> Bloquear Acesso do Cliente`;
+            document.getElementById('modal-bloqueio-client-name').textContent = `${client.name} (${client.email})`;
+            document.getElementById('modal-bloqueio-reason-container').classList.remove('hidden');
+            document.getElementById('btn-submit-bloqueio').className = 'px-5 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-md transition';
+            document.getElementById('btn-submit-bloqueio').textContent = 'Confirmar Bloqueio';
+            abrirModal('modal-bloqueio');
+        };
+
+        window.abrirModalLiberar = (clientId) => {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+            document.getElementById('modal-bloqueio-client-id').value = clientId;
+            document.getElementById('modal-bloqueio-action').value = 'unblock';
+            document.getElementById('modal-bloqueio-title').innerHTML = `<span>🔓</span> Liberar / Desbloquear Acesso`;
+            document.getElementById('modal-bloqueio-client-name').textContent = `${client.name} (${client.email})`;
+            document.getElementById('modal-bloqueio-reason-container').classList.add('hidden');
+            document.getElementById('btn-submit-bloqueio').className = 'px-5 py-2 rounded-xl text-xs font-bold text-white bg-green-600 hover:bg-green-700 shadow-md transition';
+            document.getElementById('btn-submit-bloqueio').textContent = 'Liberar Acesso Agora';
+            abrirModal('modal-bloqueio');
+        };
+
+        document.getElementById('form-bloquear-cliente').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('modal-bloqueio-client-id').value;
+            const action = document.getElementById('modal-bloqueio-action').value;
+            const motivo = document.getElementById('input-bloqueio-motivo').value.trim();
+
+            try {
+                if (action === 'block') {
+                    await updateDoc(doc(db, 'restaurants', clientId), {
+                        isBlocked: true,
+                        planStatus: 'blocked',
+                        blockedReason: motivo || 'Conta temporariamente suspensa pela administração.',
+                        blockedAt: new Date()
+                    });
+                    fecharModais();
+                    alert('Cliente bloqueado com sucesso.');
+                } else {
+                    // Liberar: adiciona 30 dias a partir de hoje
+                    const novaData = new Date();
+                    novaData.setDate(novaData.getDate() + 30);
+                    await updateDoc(doc(db, 'restaurants', clientId), {
+                        isBlocked: false,
+                        planStatus: 'active',
+                        blockedReason: '',
+                        trialEndsAt: Timestamp.fromDate(novaData),
+                        unblockedAt: new Date()
+                    });
+                    fecharModais();
+                    alert('Cliente liberado com sucesso!');
+                }
+            } catch (err) {
+                console.error("Erro ao alterar bloqueio:", err);
+                alert("Falha na operação: " + err.message);
+            }
+        });
+
+        // 3. Alterar Valor do Plano
+        window.abrirModalPlano = (clientId) => {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+            document.getElementById('modal-plano-client-id').value = clientId;
+            document.getElementById('modal-plano-client-name').textContent = `${client.name} (${client.email})`;
+            document.getElementById('select-plano-tipo').value = client.planType || 'mensal';
+            document.getElementById('input-plano-valor').value = client.planPrice !== null ? client.planPrice : (client.planType === 'anual' ? globalPricing.annual : globalPricing.monthly);
+            abrirModal('modal-alterar-plano');
+        };
+
+        document.getElementById('form-alterar-plano').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('modal-plano-client-id').value;
+            const planType = document.getElementById('select-plano-tipo').value;
+            const planPrice = parseFloat(document.getElementById('input-plano-valor').value);
+
+            try {
+                await updateDoc(doc(db, 'restaurants', clientId), {
+                    planType: planType,
+                    planPrice: isNaN(planPrice) ? 25.00 : planPrice,
+                    updatedAt: new Date()
+                });
+                fecharModais();
+                alert('Plano e valor atualizados com sucesso!');
+            } catch (err) {
+                console.error("Erro ao alterar plano:", err);
+                alert("Falha ao salvar plano: " + err.message);
+            }
+        });
+
+        // 4. Recuperação de Senha
+        window.abrirModalSenha = async (clientId) => {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+            document.getElementById('modal-senha-client-email').textContent = client.email;
+            document.getElementById('modal-senha-alert').classList.add('hidden');
+            document.getElementById('modal-senha-direct-link-container').classList.add('hidden');
+            
+            // Configura botão de envio
+            document.getElementById('btn-trigger-send-reset').onclick = async () => {
+                const btn = document.getElementById('btn-trigger-send-reset');
+                btn.disabled = true;
+                btn.textContent = 'Enviando...';
+                try {
+                    await sendPasswordResetEmail(auth, client.email);
+                    document.getElementById('modal-senha-alert').classList.remove('hidden');
+                    
+                    // Tenta também buscar o link direto via backend se configurado
+                    try {
+                        const token = await auth.currentUser.getIdToken();
+                        const res = await fetch('/.netlify/functions/admin-api', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ action: 'send-password-reset', email: client.email })
+                        });
+                        const data = await res.json();
+                        if (data.resetLink) {
+                            document.getElementById('input-senha-direct-link').value = data.resetLink;
+                            document.getElementById('modal-senha-direct-link-container').classList.remove('hidden');
+                        }
+                    } catch(e) {
+                        // Silencioso se o backend não estiver ativo
+                    }
+
+                } catch (err) {
+                    console.error("Erro ao enviar reset:", err);
+                    alert("Erro ao disparar email de redefinição: " + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Disparar Email Novamente';
+                }
+            };
+
+            abrirModal('modal-recuperar-senha');
+        };
+
+        document.getElementById('btn-copy-direct-link').addEventListener('click', () => {
+            const input = document.getElementById('input-senha-direct-link');
+            input.select();
+            document.execCommand('copy');
+            alert('Link direto copiado para a área de transferência!');
+        });
+
+        // 5. Extensão Rápida de Trial (+7, +15, +30)
+        window.estenderTrialRapido = async (clientId, dias) => {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+
+            let baseDate = (client.trialEndsAt && client.trialEndsAt > new Date()) ? new Date(client.trialEndsAt) : new Date();
+            baseDate.setDate(baseDate.getDate() + dias);
+
+            if (!confirm(`Deseja adicionar +${dias} dias de acesso para o cliente "${client.name}"?\nNova validade: ${baseDate.toLocaleDateString('pt-BR')}`)) {
+                return;
+            }
+
+            try {
+                await updateDoc(doc(db, 'restaurants', clientId), {
+                    planStatus: client.planStatus === 'blocked' ? 'trial' : client.planStatus,
+                    isBlocked: false,
+                    trialEndsAt: Timestamp.fromDate(baseDate),
+                    updatedAt: new Date()
+                });
+                alert(`+${dias} dias adicionados com sucesso!`);
+            } catch (err) {
+                console.error("Erro ao estender dias:", err);
+                alert("Erro ao adicionar dias: " + err.message);
+            }
+        };
+
+        // 6. Anotações CRM do Cliente
+        window.abrirModalAnotacoes = (clientId) => {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+            document.getElementById('modal-anotacoes-client-id').value = clientId;
+            document.getElementById('modal-anotacoes-client-name').textContent = `${client.name} (${client.email})`;
+            document.getElementById('input-anotacoes-telefone').value = client.phone || '';
+            document.getElementById('textarea-anotacoes').value = client.notes || '';
+            abrirModal('modal-anotacoes');
+        };
+
+        document.getElementById('form-salvar-anotacoes').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const clientId = document.getElementById('modal-anotacoes-client-id').value;
+            const phone = document.getElementById('input-anotacoes-telefone').value.trim();
+            const notes = document.getElementById('textarea-anotacoes').value.trim();
+
+            try {
+                await updateDoc(doc(db, 'restaurants', clientId), {
+                    phone: phone,
+                    whatsapp: phone,
+                    notes: notes,
+                    updatedAt: new Date()
+                });
+                fecharModais();
+                alert('Observações salvas com sucesso!');
+            } catch (err) {
+                console.error("Erro ao salvar anotações:", err);
+                alert("Erro ao salvar: " + err.message);
+            }
+        });
+
+        // 7. Configurações Globais de Planos
+        document.getElementById('btn-open-saas-settings').addEventListener('click', () => {
+            abrirModal('modal-saas-settings');
+        });
+
+        document.getElementById('form-saas-settings').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const monthly = parseFloat(document.getElementById('global-preco-mensal').value);
+            const annual = parseFloat(document.getElementById('global-preco-anual').value);
+            const trialDays = parseInt(document.getElementById('global-trial-dias').value);
+            const whatsapp = document.getElementById('global-suporte-whatsapp').value.trim();
+
+            try {
+                const newCfg = {
+                    monthly: isNaN(monthly) ? 25.00 : monthly,
+                    annual: isNaN(annual) ? 99.00 : annual,
+                    trialDays: isNaN(trialDays) ? 31 : trialDays,
+                    whatsapp: whatsapp,
+                    updatedAt: new Date()
+                };
+
+                await setDoc(doc(db, 'saas_config', 'pricing'), newCfg, { merge: true });
+                globalPricing = Object.assign(globalPricing, newCfg);
+                fecharModais();
+                alert('Configurações globais salvas com sucesso!');
+                atualizarKPIs();
+                renderizarTabela();
+            } catch (err) {
+                console.error("Erro ao salvar configurações:", err);
+                alert("Falha ao salvar: " + err.message);
+            }
+        });
+
+        // 8. Cadastro Manual de Cliente
+        document.getElementById('btn-novo-cliente').addEventListener('click', () => {
+            abrirModal('modal-novo-cliente');
+        });
+
+        document.getElementById('form-novo-cliente').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('novo-cliente-nome').value.trim();
+            const email = document.getElementById('novo-cliente-email').value.trim();
+            const status = document.getElementById('novo-cliente-status').value;
+            const dias = parseInt(document.getElementById('novo-cliente-dias').value) || 31;
+            const phone = document.getElementById('novo-cliente-telefone').value.trim();
+
+            const expDate = new Date();
+            expDate.setDate(expDate.getDate() + dias);
+
+            // Gera um ID simples único
+            const newId = 'manual_' + Math.random().toString(36).substring(2, 10);
+
+            try {
+                await setDoc(doc(db, 'restaurants', newId), {
+                    name: name,
+                    email: email,
+                    owner: newId,
+                    planStatus: status,
+                    isBlocked: false,
+                    trialEndsAt: Timestamp.fromDate(expDate),
+                    phone: phone,
+                    whatsapp: phone,
+                    createdAt: new Date(),
+                    notes: 'Cadastrado manualmente pelo Gestor SaaS'
+                });
+
+                document.getElementById('form-novo-cliente').reset();
+                fecharModais();
+                alert('Cliente cadastrado com sucesso!');
+            } catch (err) {
+                console.error("Erro ao cadastrar cliente:", err);
+                alert("Falha ao criar cliente: " + err.message);
+            }
+        });
+
+        // 9. Exportar para CSV
+        document.getElementById('btn-export-csv').addEventListener('click', () => {
+            if (allClients.length === 0) {
+                alert('Nenhum cliente para exportar.');
+                return;
+            }
+
+            const now = new Date();
+            const headers = ['ID', 'Restaurante', 'Email', 'Telefone', 'Status', 'Validade', 'Plano', 'Valor', 'CriadoEm', 'Notas'];
+            const rows = allClients.map(c => {
+                const status = calcularStatusReal(c, now);
+                const exp = c.trialEndsAt ? c.trialEndsAt.toLocaleDateString('pt-BR') : 'Indeterminada';
+                const created = c.createdAt ? c.createdAt.toLocaleDateString('pt-BR') : '';
+                const valor = c.planPrice !== null ? c.planPrice : (c.planType === 'anual' ? globalPricing.annual : globalPricing.monthly);
+
+                return [
+                    `"${c.id}"`,
+                    `"${c.name.replace(/"/g, '""')}"`,
+                    `"${c.email.replace(/"/g, '""')}"`,
+                    `"${(c.phone || '').replace(/"/g, '""')}"`,
+                    `"${status}"`,
+                    `"${exp}"`,
+                    `"${c.planType}"`,
+                    `"${valor}"`,
+                    `"${created}"`,
+                    `"${(c.notes || '').replace(/"/g, '""')}"`
+                ].join(';');
+            });
+
+            const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `clientes_cmvia_${now.toISOString().substring(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // ==========================================
+        // FILTROS, BUSCA E MODAIS UTILITÁRIOS
+        // ==========================================
+        function setupEventListeners() {
+            // Busca
+            document.getElementById('filter-search').addEventListener('input', (e) => {
+                currentSearchQuery = e.target.value.trim();
+                renderizarTabela();
+            });
+
+            // Filtro por pílulas de status
+            const pills = document.querySelectorAll('.filter-pill');
+            pills.forEach(pill => {
+                pill.addEventListener('click', () => {
+                    pills.forEach(p => {
+                        p.className = 'filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition';
+                    });
+                    pill.className = 'filter-pill px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 text-white transition';
+                    currentFilterStatus = pill.dataset.status;
+                    renderizarTabela();
+                });
+            });
+
+            // Ordenação
+            document.getElementById('select-sort').addEventListener('change', (e) => {
+                currentSortOrder = e.target.value;
+                renderizarTabela();
+            });
+
+            // Botão Atualizar
+            document.getElementById('btn-refresh-list').addEventListener('click', () => {
+                carregarClientesEmTempoReal();
+            });
+
+            // Fechar modais
+            document.querySelectorAll('.btn-close-modal').forEach(btn => {
+                btn.addEventListener('click', fecharModais);
+            });
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') fecharModais();
+            });
+        }
+
+        function abrirModal(modalId) {
+            const m = document.getElementById(modalId);
+            if (m) m.classList.remove('hidden');
+        }
+
+        function fecharModais() {
+            document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden'));
+        }
+
+        // Tema Claro / Escuro
+        function initTheme() {
+            const savedTheme = localStorage.getItem('cmv_admin_theme') || 'dark';
+            applyTheme(savedTheme === 'dark');
+
+            document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+                const isDark = document.documentElement.classList.contains('dark');
+                applyTheme(!isDark);
+            });
+        }
+
+        function applyTheme(isDark) {
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon-light').classList.add('hidden');
+                document.getElementById('theme-icon-dark').classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-icon-light').classList.remove('hidden');
+                document.getElementById('theme-icon-dark').classList.add('hidden');
+            }
+            try { localStorage.setItem('cmv_admin_theme', isDark ? 'dark' : 'light'); } catch(e) {}
+        }
+
+        // Utilitários
+        window.copiarTexto = (texto) => {
+            navigator.clipboard.writeText(texto).then(() => {
+                alert('Copiado para a área de transferência: ' + texto);
+            });
+        };
+
+        function limparTelefone(tel) {
+            return (tel || '').replace(/\D/g, '');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
