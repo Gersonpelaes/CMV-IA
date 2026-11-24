@@ -124,7 +124,17 @@
             <p class="text-slate-300 text-sm mb-4">Esta conta (<span id="denied-user-email" class="font-semibold text-white"></span>) não possui privilégios de Administrador do SaaS.</p>
             <p class="text-xs text-slate-400 mb-6">Se você é o proprietário do SaaS, utilize sua chave de segurança ou faça login com a conta master.</p>
             <div class="flex flex-col gap-2">
-                <button id="btn-admin-denied-logout" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-4 rounded-xl transition">Desconectar e Trocar de Conta</button>
+                <!-- Desbloqueio Imediato com a Chave Mestre -->
+            <div class="mt-4 mb-4 p-4 bg-slate-900/90 border border-amber-500/40 rounded-xl text-left">
+                <label class="block text-xs font-bold text-amber-400 mb-1.5">🔑 Você é o Gestor/Dono? Desbloqueie esta conta:</label>
+                <div class="flex gap-2">
+                    <input type="password" id="input-denied-master-key" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500" placeholder="Digite a chave mestre (cmv2026admin)">
+                    <button type="button" id="btn-unlock-denied" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs whitespace-nowrap shadow transition">Liberar</button>
+                </div>
+                <span id="denied-unlock-error" class="text-[11px] text-red-400 mt-1.5 block hidden">Chave incorreta.</span>
+            </div>
+
+            <button id="btn-admin-denied-logout" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-4 rounded-xl transition">Desconectar e Trocar de Conta</button>
                 <a href="/" class="text-xs text-blue-400 hover:underline pt-2">Ir para a tela inicial do restaurante</a>
             </div>
         </div>
@@ -631,8 +641,18 @@
         const clientsTableBody = document.getElementById('clients-table-body');
         const tableEmptyState = document.getElementById('table-empty-state');
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', async () => {
+        // Inicialização Segura
+        async function startAdminApp() {
+            initTheme();
+            setupEventListeners();
+
+            // Timeout de segurança para remover preloader se a rede demorar
+            const safetyTimer = setTimeout(() => {
+                if (preloader && !preloader.classList.contains('hidden')) {
+                    console.warn("Preloader timeout - exibindo autenticação");
+                    showAuth();
+                }
+            }, 3500);
             initTheme();
             setupEventListeners();
 
@@ -681,7 +701,14 @@
                     </div>
                 `;
             }
-        });
+            clearTimeout(safetyTimer);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startAdminApp);
+        } else {
+            startAdminApp();
+        }
 
         // ==========================================
         // CONTROLE DE ACESSO E AUTENTICAÇÃO
@@ -774,6 +801,33 @@
             await signOut(auth);
             window.location.reload();
         });
+        document.getElementById('btn-unlock-denied')?.addEventListener('click', async () => {
+            const key = document.getElementById('input-denied-master-key').value.trim();
+            const errEl = document.getElementById('denied-unlock-error');
+            if (key === DEFAULT_MASTER_KEY) {
+                if (errEl) errEl.classList.add('hidden');
+                if (currentUser) {
+                    try {
+                        await setDoc(doc(db, 'admins', currentUser.uid), {
+                            email: currentUser.email,
+                            isAdmin: true,
+                            role: 'admin',
+                            promotedAt: new Date()
+                        }, { merge: true });
+                    } catch(e) { console.warn(e); }
+                    sessionStorage.setItem('cmv_master_auth_passed', 'true');
+                    showDashboard();
+                    carregarClientesEmTempoReal();
+                    carregarConfiguracoesGlobais();
+                }
+            } else {
+                if (errEl) {
+                    errEl.textContent = 'Chave Mestre inválida. Tente novamente.';
+                    errEl.classList.remove('hidden');
+                }
+            }
+        });
+
         document.getElementById('btn-admin-denied-logout').addEventListener('click', async () => {
             sessionStorage.removeItem('cmv_master_auth_passed');
             await signOut(auth);

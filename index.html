@@ -1589,6 +1589,42 @@
             });
             document.querySelector('button[data-view="settings"]').addEventListener('click', () => showView('settings'));
 
+            
+            // --- ATALHOS SECRETOS DO GESTOR SAAS ---
+            // 1. Redirecionamento por URL param ?admin ou ?gestor
+            if (window.location.search.includes('admin') || window.location.search.includes('gestor')) {
+                window.location.href = '/admin.html';
+            }
+
+            // 2. Atalho de teclado Ctrl + Shift + A ou Alt + A
+            window.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) || (e.altKey && (e.key === 'A' || e.key === 'a'))) {
+                    window.location.href = '/admin.html';
+                }
+            });
+
+            // 3. Toque/Clique 5x secreto no Logo Cmv.ia
+            let logoClicks = 0;
+            let logoTimer = null;
+            const logoEl = document.querySelector('.sidebar h1') || document.querySelector('h1');
+            if (logoEl) {
+                logoEl.style.cursor = 'pointer';
+                logoEl.addEventListener('click', () => {
+                    logoClicks++;
+                    clearTimeout(logoTimer);
+                    logoTimer = setTimeout(() => { logoClicks = 0; }, 2000);
+                    if (logoClicks >= 5) {
+                        logoClicks = 0;
+                        const key = prompt('Acesso Restrito ao Gestor SaaS. Digite a Chave Mestre:');
+                        if (key === 'cmv2026admin') {
+                            window.location.href = '/admin.html';
+                        } else if (key) {
+                            alert('Chave incorreta.');
+                        }
+                    }
+                });
+            }
+
             // Ponte de integração para o Assistente por Voz
             window.cmvApp = {
                 getCurrentView: () => {
