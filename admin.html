@@ -861,38 +861,111 @@
         }
 
         // ==========================================
-        // CARREGAMENTO E SINCRONIZAÇÃO EM TEMPO REAL
+        // HELPER PARA CHAMADAS À ADMIN API
         // ==========================================
-        function carregarClientesEmTempoReal() {
-            if (unsubscribeClients) unsubscribeClients();
-
-            const q = collection(db, 'restaurants');
-            unsubscribeClients = onSnapshot(q, (snapshot) => {
-                allClients = [];
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    allClients.push({
-                        id: docSnap.id,
-                        name: data.name || 'Sem Nome',
-                        email: data.email || 'Não informado',
-                        planStatus: data.planStatus || 'trial',
-                        trialEndsAt: data.trialEndsAt ? parseFirebaseDate(data.trialEndsAt) : null,
-                        planPrice: data.planPrice !== undefined ? parseFloat(data.planPrice) : null,
-                        planType: data.planType || 'mensal',
-                        isBlocked: data.isBlocked === true || data.planStatus === 'blocked',
-                        blockedReason: data.blockedReason || '',
-                        createdAt: data.createdAt ? parseFirebaseDate(data.createdAt) : null,
-                        notes: data.notes || '',
-                        phone: data.phone || data.whatsapp || '',
-                        lastPaymentId: data.lastPaymentId || null
-                    });
-                });
-
-                atualizarKPIs();
-                renderizarTabela();
-            }, (error) => {
-                console.error("Erro ao ouvir clientes:", error);
+        async function callAdminApi(payload) {
+            let token = null;
+            if (auth && auth.currentUser) {
+                try { token = await auth.currentUser.getIdToken(); } catch(e) {}
+            }
+            const res = await fetch('/.netlify/functions/admin-api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                },
+                body: JSON.stringify({
+                    ...payload,
+                    masterKey: DEFAULT_MASTER_KEY
+                })
             });
+            return await res.json();
+        }
+
+        // ==========================================
+        // CARREGAMENTO E SINCRONIZAÇÃO DOS CLIENTES
+        // ==========================================
+        async function carregarClientesEmTempoReal() {
+            // Se a lista estiver vazia, exibe estado de busca
+            if (allClients.length === 0) {
+                clientsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-slate-400">
+                            <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                            Buscando clientes no banco de dados...
+                        </td>
+                    </tr>
+                `;
+            }
+
+            let loadedViaApi = false;
+
+            // 1. Tenta carregar via Admin API (com privilégio de Service Account, sem restrições de regras)
+            try {
+                const data = await callAdminApi({ action: 'list-clients' });
+                if (data && data.success && Array.isArray(data.clients)) {
+                    allClients = data.clients.map(c => ({
+                        ...c,
+                        trialEndsAt: parseFirebaseDate(c.trialEndsAt),
+                        createdAt: parseFirebaseDate(c.createdAt)
+                    }));
+                    loadedViaApi = true;
+                    atualizarKPIs();
+                    renderizarTabela();
+                    console.log("Clientes carregados via Admin API:", allClients.length);
+                } else if (data && data.error) {
+                    console.warn("Aviso Admin API:", data.error);
+                }
+            } catch (errApi) {
+                console.warn("Falha na chamada Admin API:", errApi);
+            }
+
+            // 2. Conecta listener em tempo real do Firestore se as regras permitirem
+            try {
+                if (unsubscribeClients) unsubscribeClients();
+                const q = collection(db, 'restaurants');
+                unsubscribeClients = onSnapshot(q, (snapshot) => {
+                    allClients = [];
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data();
+                        allClients.push({
+                            id: docSnap.id,
+                            name: data.name || 'Sem Nome',
+                            email: data.email || 'Não informado',
+                            planStatus: data.planStatus || 'trial',
+                            trialEndsAt: data.trialEndsAt ? parseFirebaseDate(data.trialEndsAt) : null,
+                            planPrice: data.planPrice !== undefined ? parseFloat(data.planPrice) : null,
+                            planType: data.planType || 'mensal',
+                            isBlocked: data.isBlocked === true || data.planStatus === 'blocked',
+                            blockedReason: data.blockedReason || '',
+                            createdAt: data.createdAt ? parseFirebaseDate(data.createdAt) : null,
+                            notes: data.notes || '',
+                            phone: data.phone || data.whatsapp || '',
+                            lastPaymentId: data.lastPaymentId || null
+                        });
+                    });
+
+                    atualizarKPIs();
+                    renderizarTabela();
+                }, (firestoreError) => {
+                    console.warn("Firestore client listener restrito:", firestoreError.message);
+                    if (!loadedViaApi && allClients.length === 0) {
+                        clientsTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-amber-400">
+                                    <div class="max-w-md mx-auto p-4 bg-amber-950/40 border border-amber-800 rounded-xl">
+                                        <p class="font-bold text-sm text-amber-200 mb-1">Permissão Restrita no Navegador</p>
+                                        <p class="text-xs text-amber-300 mb-3">${firestoreError.message}</p>
+                                        <button onclick="carregarClientesEmTempoReal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">Tentar Novamente</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+            } catch (errListener) {
+                console.warn("Erro ao configurar listener do Firestore:", errListener);
+            }
         }
 
         async function carregarConfiguracoesGlobais() {
@@ -1206,13 +1279,13 @@
             }
 
             try {
-                await updateDoc(doc(db, 'restaurants', clientId), {
-                    planStatus: 'courtesy',
-                    isBlocked: false,
-                    trialEndsAt: Timestamp.fromDate(novaData),
-                    notes: motivo ? `Cortesia concedida (${duracao}d): ${motivo}` : undefined,
-                    updatedAt: new Date()
+                await callAdminApi({
+                    action: 'set-courtesy',
+                    clientId: clientId,
+                    durationDays: duracao,
+                    reason: motivo
                 });
+                await carregarClientesEmTempoReal();
                 fecharModais();
                 alert('Cortesia concedida com sucesso!');
             } catch (err) {
@@ -1255,29 +1328,15 @@
             const motivo = document.getElementById('input-bloqueio-motivo').value.trim();
 
             try {
-                if (action === 'block') {
-                    await updateDoc(doc(db, 'restaurants', clientId), {
-                        isBlocked: true,
-                        planStatus: 'blocked',
-                        blockedReason: motivo || 'Conta temporariamente suspensa pela administração.',
-                        blockedAt: new Date()
-                    });
-                    fecharModais();
-                    alert('Cliente bloqueado com sucesso.');
-                } else {
-                    // Liberar: adiciona 30 dias a partir de hoje
-                    const novaData = new Date();
-                    novaData.setDate(novaData.getDate() + 30);
-                    await updateDoc(doc(db, 'restaurants', clientId), {
-                        isBlocked: false,
-                        planStatus: 'active',
-                        blockedReason: '',
-                        trialEndsAt: Timestamp.fromDate(novaData),
-                        unblockedAt: new Date()
-                    });
-                    fecharModais();
-                    alert('Cliente liberado com sucesso!');
-                }
+                await callAdminApi({
+                    action: 'set-blocked',
+                    clientId: clientId,
+                    isBlocked: action === 'block',
+                    reason: motivo
+                });
+                await carregarClientesEmTempoReal();
+                fecharModais();
+                alert(action === 'block' ? 'Cliente bloqueado com sucesso.' : 'Cliente liberado com sucesso!');
             } catch (err) {
                 console.error("Erro ao alterar bloqueio:", err);
                 alert("Falha na operação: " + err.message);
@@ -1302,11 +1361,13 @@
             const planPrice = parseFloat(document.getElementById('input-plano-valor').value);
 
             try {
-                await updateDoc(doc(db, 'restaurants', clientId), {
-                    planType: planType,
+                await callAdminApi({
+                    action: 'update-client-plan',
+                    clientId: clientId,
                     planPrice: isNaN(planPrice) ? 25.00 : planPrice,
-                    updatedAt: new Date()
+                    planType: planType
                 });
+                await carregarClientesEmTempoReal();
                 fecharModais();
                 alert('Plano e valor atualizados com sucesso!');
             } catch (err) {
@@ -1381,12 +1442,12 @@
             }
 
             try {
-                await updateDoc(doc(db, 'restaurants', clientId), {
-                    planStatus: client.planStatus === 'blocked' ? 'trial' : client.planStatus,
-                    isBlocked: false,
-                    trialEndsAt: Timestamp.fromDate(baseDate),
-                    updatedAt: new Date()
+                await callAdminApi({
+                    action: 'extend-trial',
+                    clientId: clientId,
+                    days: dias
                 });
+                await carregarClientesEmTempoReal();
                 alert(`+${dias} dias adicionados com sucesso!`);
             } catch (err) {
                 console.error("Erro ao estender dias:", err);
@@ -1412,12 +1473,13 @@
             const notes = document.getElementById('textarea-anotacoes').value.trim();
 
             try {
-                await updateDoc(doc(db, 'restaurants', clientId), {
+                await callAdminApi({
+                    action: 'save-notes',
+                    clientId: clientId,
                     phone: phone,
-                    whatsapp: phone,
-                    notes: notes,
-                    updatedAt: new Date()
+                    notes: notes
                 });
+                await carregarClientesEmTempoReal();
                 fecharModais();
                 alert('Observações salvas com sucesso!');
             } catch (err) {

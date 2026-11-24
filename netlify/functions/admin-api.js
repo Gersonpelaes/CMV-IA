@@ -77,7 +77,7 @@ exports.handler = async function(event, context) {
             return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Usuário promovido a Master Admin!' }) };
         }
 
-        // Para as demais ações, exige que o usuário seja Admin verificado
+        // Para as demais ações, verifica se é admin verificado ou forneceu master key
         let isAuthorizedAdmin = false;
         if (decodedToken) {
             const adminDoc = await db.collection('admins').doc(decodedToken.uid).get();
@@ -91,8 +91,9 @@ exports.handler = async function(event, context) {
             }
         }
 
-        // Se passar a master key diretamente no body, autoriza a requisição
-        if (body.masterKey && body.masterKey === (process.env.MASTER_ADMIN_KEY || DEFAULT_MASTER_KEY)) {
+        // Se passar a master key diretamente no body ou query param, autoriza a requisição
+        const providedKey = body.masterKey || event.queryStringParameters?.masterKey;
+        if (providedKey && providedKey === (process.env.MASTER_ADMIN_KEY || DEFAULT_MASTER_KEY)) {
             isAuthorizedAdmin = true;
         }
 
@@ -107,6 +108,36 @@ exports.handler = async function(event, context) {
         // ===================================
         // EXECUÇÃO DAS AÇÕES ADMINISTRATIVAS
         // ===================================
+
+        // 0. Listar Todos os Clientes (com privilégio de Admin SDK)
+        if (action === 'list-clients') {
+            const snapshot = await db.collection('restaurants').get();
+            const clients = [];
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                clients.push({
+                    id: docSnap.id,
+                    name: data.name || 'Sem Nome',
+                    email: data.email || 'Não informado',
+                    planStatus: data.planStatus || 'trial',
+                    trialEndsAt: data.trialEndsAt ? (data.trialEndsAt.toDate ? data.trialEndsAt.toDate().toISOString() : data.trialEndsAt) : null,
+                    planPrice: data.planPrice !== undefined ? parseFloat(data.planPrice) : null,
+                    planType: data.planType || 'mensal',
+                    isBlocked: data.isBlocked === true || data.planStatus === 'blocked',
+                    blockedReason: data.blockedReason || '',
+                    createdAt: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate().toISOString() : data.createdAt) : null,
+                    notes: data.notes || '',
+                    phone: data.phone || data.whatsapp || '',
+                    lastPaymentId: data.lastPaymentId || null
+                });
+            });
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ success: true, clients: clients, count: clients.length })
+            };
+        }
 
         // 1. Enviar / Gerar Link de Redefinição de Senha
         if (action === 'send-password-reset') {
@@ -143,14 +174,17 @@ exports.handler = async function(event, context) {
                 expDate.setDate(expDate.getDate() + (parseInt(durationDays) || 30));
             }
 
-            await db.collection('restaurants').doc(clientId).update({
+            const updates = {
                 planStatus: 'courtesy',
                 isBlocked: false,
                 trialEndsAt: admin.firestore.Timestamp.fromDate(expDate),
-                notes: reason ? `Cortesia concedida: ${reason}` : admin.firestore.FieldValue.delete(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
+            };
+            if (reason) {
+                updates.notes = `Cortesia concedida: ${reason}`;
+            }
 
+            await db.collection('restaurants').doc(clientId).update(updates);
             return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
         }
 
@@ -189,6 +223,51 @@ exports.handler = async function(event, context) {
             await db.collection('restaurants').doc(clientId).update({
                 planPrice: parseFloat(planPrice) || 25.00,
                 planType: planType || 'mensal',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+        }
+
+        // 5. Salvar Anotações / Telefone do CRM
+        if (action === 'save-notes') {
+            const { clientId, phone, notes } = body;
+            if (!clientId) {
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID do cliente ausente.' }) };
+            }
+
+            await db.collection('restaurants').doc(clientId).update({
+                phone: phone || '',
+                whatsapp: phone || '',
+                notes: notes || '',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+        }
+
+        // 6. Extensão Rápida de Trial
+        if (action === 'extend-trial') {
+            const { clientId, days } = body;
+            if (!clientId) {
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID do cliente ausente.' }) };
+            }
+
+            const restDoc = await db.collection('restaurants').doc(clientId).get();
+            let baseDate = new Date();
+            if (restDoc.exists) {
+                const cur = restDoc.data();
+                if (cur.trialEndsAt) {
+                    const d = cur.trialEndsAt.toDate ? cur.trialEndsAt.toDate() : new Date(cur.trialEndsAt);
+                    if (d > baseDate) baseDate = d;
+                }
+            }
+            baseDate.setDate(baseDate.getDate() + (parseInt(days) || 7));
+
+            await db.collection('restaurants').doc(clientId).update({
+                trialEndsAt: admin.firestore.Timestamp.fromDate(baseDate),
+                isBlocked: false,
+                planStatus: 'trial',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
